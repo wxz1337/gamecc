@@ -70,6 +70,8 @@ export type PandaScoreMatch = {
   begin_at?: string | null;
   end_at?: string | null;
   original_scheduled_at?: string | null;
+  updated_at?: string | null;
+  replay_url?: string | null;
   status?: string | null;
   number_of_games?: number | null;
   match_type?: string | null;

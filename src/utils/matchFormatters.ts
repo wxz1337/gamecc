@@ -15,6 +15,23 @@ export function formatUpdatedAt(value: string): string {
   }).format(date);
 }
 
+export function formatDateTime(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "时间未知";
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: BEIJING_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
 export function formatTeams(match: Match): string {
   return match.teams
     .map((team) => team.name.trim())
@@ -60,6 +77,17 @@ export function formatTournamentMeta(match: Match): string[] {
   ].filter((item): item is string => Boolean(item));
 }
 
-export function getEmptyStateMessage(game: GameFilter): string {
-  return game === "all" ? "今天暂无已收录赛程。" : "当前筛选条件下没有比赛。";
+export function getEmptyStateMessage(filters: {
+  game: GameFilter;
+  query?: string;
+  league?: string;
+  team?: string;
+  region?: string;
+  stage?: string;
+}): string {
+  if (filters.query || filters.league || filters.team || filters.region || filters.stage) {
+    return "当前筛选条件下没有匹配的比赛，请尝试放宽日期范围或清空部分筛选。";
+  }
+
+  return filters.game === "all" ? "当前日期范围内暂无已收录比赛。" : "当前筛选游戏在所选日期范围内没有比赛。";
 }

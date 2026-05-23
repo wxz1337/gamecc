@@ -14,10 +14,29 @@ const mockedGetMatches = vi.mocked(getMatches);
 
 const sampleResponse: MatchesResponse = {
   date: "2026-05-24",
+  from: "2026-05-24",
+  to: "2026-05-24",
   timezone: "Asia/Shanghai",
-  game: "cs2",
+  filters: {
+    view: "schedule",
+    from: "2026-05-24",
+    to: "2026-05-24",
+    game: "cs2",
+    status: "all"
+  },
+  sort: "beginAt_asc",
   stale: false,
   updatedAt: "2026-05-23T18:00:00.000Z",
+  total: 1,
+  facets: {
+    games: [],
+    statuses: [],
+    leagues: [],
+    teams: [],
+    regions: [],
+    stages: []
+  },
+  game: "cs2",
   matches: [
     {
       id: "match-1",
@@ -32,7 +51,13 @@ const sampleResponse: MatchesResponse = {
       teams: [
         { id: "team-a", name: "Team A", acronym: "A" },
         { id: "team-b", name: "Team B", acronym: "B" }
-      ]
+      ],
+      streamUrl: null,
+      replayUrl: null,
+      serie: null,
+      stage: null,
+      source: "pandascore",
+      updatedAt: "2026-05-23T18:00:00.000Z"
     }
   ]
 };
@@ -41,15 +66,25 @@ describe("API app", () => {
   let server: Server;
   let baseUrl: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mockedGetMatches.mockReset();
 
-    server = createApp().listen(0);
+    server = await new Promise<Server>((resolve, reject) => {
+      const listeningServer = createApp().listen(0, "127.0.0.1", () => {
+        resolve(listeningServer);
+      });
+
+      listeningServer.once("error", reject);
+    });
     const address = server.address() as AddressInfo;
     baseUrl = `http://127.0.0.1:${address.port}`;
   });
 
   afterEach(async () => {
+    if (!server) {
+      return;
+    }
+
     await new Promise<void>((resolve, reject) => {
       server.close((error) => {
         if (error) {
@@ -80,11 +115,18 @@ describe("API app", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(sampleResponse);
-    expect(mockedGetMatches).toHaveBeenCalledWith({
-      date: "2026-05-24",
-      game: "cs2",
-      refresh: true
-    });
+    expect(mockedGetMatches).toHaveBeenCalledWith(
+      expect.objectContaining({
+        date: "2026-05-24",
+        from: "2026-05-24",
+        to: "2026-05-24",
+        game: "cs2",
+        refresh: true,
+        view: "schedule",
+        status: "all",
+        sort: "beginAt_asc"
+      })
+    );
   });
 
   it("returns a validation error for invalid dates", async () => {

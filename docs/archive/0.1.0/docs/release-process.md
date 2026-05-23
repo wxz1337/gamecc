@@ -10,13 +10,13 @@
 - `MINOR`：新增功能、页面能力或后端能力，保持兼容。
 - `PATCH`：bug 修复、样式修正、文档更新、测试补强。
 
-当前版本：`0.2.0`
+当前版本：`0.1.0`
 
 建议节奏：
 
-- 小修复：`0.2.1`
-- 优化赛事筛选、历史日期查询、赛程/赛果视图：`0.2.x`
-- 增加收藏关注、提醒、日历订阅等能力：`0.3.0`
+- 小修复：`0.1.1`
+- 增加测试、组件拆分但不改功能：`0.2.0`
+- 增加日期选择器、本周视图等新能力：`0.3.0`
 - 改 API 响应结构或部署架构：评估是否进入 `1.0.0` 前置阶段
 
 ## 每次更新前
@@ -36,7 +36,7 @@ npm run build
 4. 如项目已初始化 Git，创建更新分支：
 
 ```bash
-git checkout -b release/0.2.1
+git checkout -b release/0.1.1
 ```
 
 或：
@@ -90,9 +90,9 @@ npx tsx -e 'import dotenv from "dotenv"; dotenv.config({ path: ".env.local" }); 
 
 - `README.md`
 - `docs/project-status.md`
-- `docs/planning/<version>/requirements.md`
-- `docs/planning/<version>/detailed-design.md`
-- `docs/planning/<version>/implementation-tasks.md`
+- `requirements.md`
+- `detailed-design.md`
+- `implementation-tasks.md`
 
 ## 发布记录
 
@@ -103,8 +103,8 @@ git status
 npm test
 npm run build
 git add .
-git commit -m "Release 0.2.1"
-git tag v0.2.1
+git commit -m "Release 0.1.1"
+git tag v0.1.1
 ```
 
 如果没有 Git，至少在 `CHANGELOG.md` 中记录：
@@ -123,9 +123,11 @@ git tag v0.2.1
 
 ## 推荐的下一个版本
 
-建议 `0.3.0` 做个人关注能力升级：
+建议 `0.2.0` 做工程化收口：
 
-- 收藏常看的队伍、赛事或游戏。
-- 增加“我的关注”视图。
-- 增加开赛提醒或日历订阅。
-- 根据个人偏好微调排序。
+- 初始化 Git。
+- 补 API 集成测试。
+- 拆分 `src/App.tsx` 组件。
+- 增加前端手工验收清单或轻量自动化测试。
+- 更新项目状态文档。
+

@@ -59,7 +59,12 @@ describe("pandascoreMapper", () => {
         { id: null, name: "TBD", acronym: null, imageUrl: null, darkModeImageUrl: null, location: null },
         { id: null, name: "TBD", acronym: null, imageUrl: null, darkModeImageUrl: null, location: null }
       ],
-      streamUrl: "https://example.com/stream"
+      streamUrl: "https://example.com/stream",
+      replayUrl: null,
+      serie: "LPL 2026 Spring",
+      stage: null,
+      source: "pandascore",
+      updatedAt: expect.any(String)
     });
   });
 });

@@ -8,6 +8,56 @@ export type MatchStatus =
   | "postponed"
   | "cancelled";
 
+export type MatchStatusFilter = "all" | MatchStatus;
+
+export type MatchSort = "beginAt_asc" | "beginAt_desc" | "status" | "updatedAt_desc" | "league";
+
+export type MatchView = "schedule" | "results";
+
+export type MatchFilters = {
+  view: MatchView;
+  from: string;
+  to: string;
+  game: GameFilter;
+  status: MatchStatusFilter;
+  query?: string;
+  league?: string;
+  team?: string;
+  region?: string;
+  stage?: string;
+};
+
+export type FacetOption = {
+  value: string;
+  label: string;
+  count: number;
+};
+
+export type MatchFacets = {
+  games: FacetOption[];
+  statuses: FacetOption[];
+  leagues: FacetOption[];
+  teams: FacetOption[];
+  regions: FacetOption[];
+  stages: FacetOption[];
+};
+
+export type MatchQuery = {
+  date?: string;
+  from: string;
+  to: string;
+  view: MatchView;
+  game: GameFilter;
+  status: MatchStatusFilter;
+  query?: string;
+  league?: string;
+  team?: string;
+  region?: string;
+  stage?: string;
+  sort: MatchSort;
+  refresh?: boolean;
+};
+
 export type Team = {
   id?: string | null;
   name: string;
@@ -63,13 +113,24 @@ export type Match = {
   games?: MatchGame[];
   teams: Team[];
   streamUrl?: string | null;
+  replayUrl?: string | null;
+  serie?: string | null;
+  stage?: string | null;
+  source: "pandascore";
+  updatedAt: string;
 };
 
 export type MatchesResponse = {
-  date: string;
+  date?: string;
+  from: string;
+  to: string;
   timezone: "Asia/Shanghai";
-  game: GameFilter;
+  filters: MatchFilters;
+  sort: MatchSort;
   stale: boolean;
   updatedAt: string;
+  total: number;
+  facets: MatchFacets;
+  game: GameFilter;
   matches: Match[];
 };

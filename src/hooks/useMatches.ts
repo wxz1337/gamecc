@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { GameFilter, MatchesResponse } from "../../shared/match";
+import { MatchesResponse } from "../../shared/match";
 import { fetchMatches, MatchesApiError } from "../api/matches";
 import { createMockMatchesResponse } from "../mocks/matches";
+import { MatchPageState } from "../utils/matchPageState";
 
 type UseMatchesParams = {
-  date: string;
-  game: GameFilter;
+  filters: MatchPageState;
 };
 
 type UseMatchesResult = {
@@ -16,7 +16,7 @@ type UseMatchesResult = {
   refresh: () => void;
 };
 
-export function useMatches({ date, game }: UseMatchesParams): UseMatchesResult {
+export function useMatches({ filters }: UseMatchesParams): UseMatchesResult {
   const requestIdRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
   const [data, setData] = useState<MatchesResponse | null>(null);
@@ -39,8 +39,7 @@ export function useMatches({ date, game }: UseMatchesParams): UseMatchesResult {
 
     try {
       const response = await fetchMatches({
-        date,
-        game,
+        filters,
         refresh,
         signal: controller.signal
       });
@@ -57,7 +56,7 @@ export function useMatches({ date, game }: UseMatchesParams): UseMatchesResult {
 
       if (caughtError instanceof MatchesApiError) {
         if (caughtError.code === "TOKEN_MISSING" && import.meta.env.DEV) {
-          setData(createMockMatchesResponse(date, game));
+          setData(createMockMatchesResponse(filters));
           setSource("mock");
           setError(null);
           return;
@@ -84,7 +83,7 @@ export function useMatches({ date, game }: UseMatchesParams): UseMatchesResult {
     return () => {
       controllerRef.current?.abort();
     };
-  }, [date, game]);
+  }, [filters]);
 
   return {
     data,

@@ -1,4 +1,5 @@
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { addDays, differenceInCalendarDays } from "date-fns";
 
 export const BEIJING_TIME_ZONE = "Asia/Shanghai" as const;
 
@@ -14,6 +15,11 @@ export type BeijingDayRangeUtc = {
 export type BeijingDateTimeDisplay = {
   displayDate: string;
   displayTime: string;
+};
+
+export type BeijingDateRange = {
+  from: string;
+  to: string;
 };
 
 export function isValidDateString(date: string): boolean {
@@ -33,6 +39,47 @@ export function getBeijingDayRangeUtc(date: string): BeijingDayRangeUtc {
 
   const startUtc = fromZonedTime(`${date}T00:00:00.000`, BEIJING_TIME_ZONE);
   const endUtc = fromZonedTime(`${date}T23:59:59.999`, BEIJING_TIME_ZONE);
+
+  return {
+    startUtc,
+    endUtc,
+    startUtcIso: startUtc.toISOString(),
+    endUtcIso: endUtc.toISOString()
+  };
+}
+
+export function getBeijingTodayDate(): string {
+  return formatInTimeZone(new Date(), BEIJING_TIME_ZONE, "yyyy-MM-dd");
+}
+
+export function addBeijingDays(date: string, days: number): string {
+  if (!isValidDateString(date)) {
+    throw new Error(`Invalid date string: ${date}`);
+  }
+
+  const nextDate = addDays(new Date(`${date}T00:00:00.000Z`), days);
+
+  return formatInTimeZone(nextDate, BEIJING_TIME_ZONE, "yyyy-MM-dd");
+}
+
+export function getDateSpanDays(from: string, to: string): number {
+  if (!isValidDateString(from) || !isValidDateString(to)) {
+    throw new Error(`Invalid date string: ${from} - ${to}`);
+  }
+
+  const startTime = Date.UTC(Number(from.slice(0, 4)), Number(from.slice(5, 7)) - 1, Number(from.slice(8, 10)));
+  const endTime = Date.UTC(Number(to.slice(0, 4)), Number(to.slice(5, 7)) - 1, Number(to.slice(8, 10)));
+
+  return differenceInCalendarDays(new Date(endTime), new Date(startTime)) + 1;
+}
+
+export function getBeijingDateRangeUtc(from: string, to: string): BeijingDayRangeUtc {
+  if (!isValidDateString(from) || !isValidDateString(to)) {
+    throw new Error(`Invalid date range: ${from} - ${to}`);
+  }
+
+  const startUtc = fromZonedTime(`${from}T00:00:00.000`, BEIJING_TIME_ZONE);
+  const endUtc = fromZonedTime(`${to}T23:59:59.999`, BEIJING_TIME_ZONE);
 
   return {
     startUtc,

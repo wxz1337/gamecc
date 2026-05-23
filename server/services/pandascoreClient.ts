@@ -1,4 +1,3 @@
-import { getBeijingDayRangeUtc } from "../../shared/date.js";
 import { AppError, ERROR_CODES } from "../../shared/errors.js";
 import { GameType } from "../../shared/match.js";
 import { PandaScoreMatch } from "../types/pandascore.js";
@@ -13,8 +12,8 @@ const ENDPOINTS: Record<GameType, string> = {
 };
 
 type FetchMatchesRange = {
-  startUtcIso: string;
-  endUtcIso: string;
+  startUtc: Date;
+  endUtc: Date;
 };
 
 function getTimeoutMs(): number {
@@ -26,9 +25,8 @@ function getTimeoutMs(): number {
 function buildMatchesUrl(game: GameType, range: FetchMatchesRange): URL {
   const url = new URL(ENDPOINTS[game], PANDASCORE_BASE_URL);
 
-  url.searchParams.set("range[begin_at]", `${range.startUtcIso},${range.endUtcIso}`);
+  url.searchParams.set("range[begin_at]", `${range.startUtc.toISOString()},${range.endUtc.toISOString()}`);
   url.searchParams.set("per_page", "100");
-  url.searchParams.set("page", "1");
   url.searchParams.set("sort", "begin_at");
 
   return url;
@@ -46,7 +44,7 @@ async function parseMatchesResponse(response: Response): Promise<PandaScoreMatch
 
 export async function fetchPandaScoreMatches(
   game: GameType,
-  date: string
+  range: FetchMatchesRange
 ): Promise<PandaScoreMatch[]> {
   const token = process.env.PANDASCORE_API_TOKEN?.trim();
 
@@ -54,24 +52,38 @@ export async function fetchPandaScoreMatches(
     throw new AppError(ERROR_CODES.TOKEN_MISSING, "服务端未配置数据源。", 500);
   }
 
-  const range = getBeijingDayRangeUtc(date);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), getTimeoutMs());
+  const perPage = 100;
+  const maxPages = 10;
+  const matches: PandaScoreMatch[] = [];
 
   try {
-    const response = await fetch(buildMatchesUrl(game, range), {
-      headers: {
-        accept: "application/json",
-        authorization: `Bearer ${token}`
-      },
-      signal: controller.signal
-    });
+    for (let page = 1; page <= maxPages; page += 1) {
+      const url = buildMatchesUrl(game, range);
+      url.searchParams.set("page", String(page));
 
-    if (!response.ok) {
-      throw new AppError(ERROR_CODES.PANDASCORE_REQUEST_FAILED, "赛程数据暂时获取失败，请稍后重试。", 502);
+      const response = await fetch(url, {
+        headers: {
+          accept: "application/json",
+          authorization: `Bearer ${token}`
+        },
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        throw new AppError(ERROR_CODES.PANDASCORE_REQUEST_FAILED, "赛程数据暂时获取失败，请稍后重试。", 502);
+      }
+
+      const pageMatches = await parseMatchesResponse(response);
+      matches.push(...pageMatches);
+
+      if (pageMatches.length < perPage) {
+        break;
+      }
     }
 
-    return await parseMatchesResponse(response);
+    return matches;
   } catch (error) {
     if (error instanceof AppError) {
       throw error;

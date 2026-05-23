@@ -1,3 +1,5 @@
+import type { MatchQuery } from "../../shared/match.js";
+
 type CacheEntry<T> = {
   value: T;
   createdAt: number;
@@ -19,8 +21,29 @@ function getCacheTtlSeconds(): number {
   return Math.min(MAX_TTL_SECONDS, Math.max(MIN_TTL_SECONDS, rawValue));
 }
 
-export function buildCacheKey(date: string, game: string): string {
-  return `matches:${date}:${game}`;
+function normalizeKeyPart(value: string | undefined): string {
+  return value?.trim().toLowerCase() || "all";
+}
+
+export function buildCacheKey(query: MatchQuery | string, game?: string): string {
+  if (typeof query === "string") {
+    return `matches:${query}:${game ?? "all"}`;
+  }
+
+  return [
+    "matches:v2",
+    query.from,
+    query.to,
+    query.view,
+    query.game,
+    query.status,
+    normalizeKeyPart(query.query),
+    normalizeKeyPart(query.league),
+    normalizeKeyPart(query.team),
+    normalizeKeyPart(query.region),
+    normalizeKeyPart(query.stage),
+    query.sort
+  ].join(":");
 }
 
 export function getFresh<T>(key: string): T | null {

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   BEIJING_TIME_ZONE,
+  addBeijingDays,
   formatBeijingDateTime,
+  getBeijingDateRangeUtc,
   getBeijingDayRangeUtc,
+  getDateSpanDays,
   isValidDateString
 } from "./date.js";
 
@@ -29,5 +32,17 @@ describe("date utilities", () => {
       displayDate: "2026-05-24",
       displayTime: "00:00"
     });
+  });
+
+  it("converts a Beijing date range to the expected UTC range", () => {
+    const range = getBeijingDateRangeUtc("2026-05-01", "2026-05-24");
+
+    expect(range.startUtcIso).toBe("2026-04-30T16:00:00.000Z");
+    expect(range.endUtcIso).toBe("2026-05-24T15:59:59.999Z");
+  });
+
+  it("counts inclusive Beijing date spans and adds days correctly", () => {
+    expect(getDateSpanDays("2026-05-01", "2026-05-31")).toBe(31);
+    expect(addBeijingDays("2026-05-24", 7)).toBe("2026-05-31");
   });
 });

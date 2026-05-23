@@ -1,4 +1,5 @@
-import { MatchesResponse, GameFilter } from "../../shared/match";
+import { MatchesResponse } from "../../shared/match";
+import { MatchPageState, buildMatchPageSearchParams } from "../utils/matchPageState";
 
 export class MatchesApiError extends Error {
   readonly status: number;
@@ -13,17 +14,19 @@ export class MatchesApiError extends Error {
 }
 
 type FetchMatchesParams = {
-  date: string;
-  game: GameFilter;
+  filters: MatchPageState;
   refresh?: boolean;
   signal?: AbortSignal;
 };
 
-export async function fetchMatches({ date, game, refresh = false, signal }: FetchMatchesParams): Promise<MatchesResponse> {
+export async function fetchMatches({ filters, refresh = false, signal }: FetchMatchesParams): Promise<MatchesResponse> {
   const url = new URL("/api/matches", window.location.origin);
 
-  url.searchParams.set("date", date);
-  url.searchParams.set("game", game);
+  const searchParams = buildMatchPageSearchParams(filters);
+
+  searchParams.forEach((value, key) => {
+    url.searchParams.set(key, value);
+  });
 
   if (refresh) {
     url.searchParams.set("refresh", "1");

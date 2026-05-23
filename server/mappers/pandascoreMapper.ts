@@ -30,6 +30,10 @@ function mapStatus(status: string | null | undefined): MatchStatus {
     return "cancelled";
   }
 
+  if (normalizedStatus === "postponed" || normalizedStatus === "delayed") {
+    return "postponed";
+  }
+
   return "not_started";
 }
 
@@ -106,6 +110,7 @@ export function mapPandaScoreMatch(rawMatch: PandaScoreMatch, game: GameType): M
   const winnerTeamId = rawMatch.winner_id == null ? null : String(rawMatch.winner_id);
   const displayEnd = endAt ? formatBeijingDateTime(endAt) : null;
   const displayOriginal = originalScheduledAt ? formatBeijingDateTime(originalScheduledAt) : null;
+  const updatedAt = safeOptionalIso(rawMatch.updated_at) ?? new Date().toISOString();
 
   return {
     id: String(rawMatch.id ?? beginAt),
@@ -151,6 +156,11 @@ export function mapPandaScoreMatch(rawMatch: PandaScoreMatch, game: GameType): M
         winnerTeamId: singleGame.winner?.id == null ? null : String(singleGame.winner.id)
       })) ?? [],
     teams,
-    streamUrl: rawMatch.streams_list?.[0]?.raw_url ?? null
+    streamUrl: rawMatch.streams_list?.[0]?.raw_url ?? null,
+    replayUrl: rawMatch.replay_url ?? null,
+    serie: rawMatch.serie?.full_name?.trim() || rawMatch.serie?.name?.trim() || null,
+    stage: rawMatch.tournament?.type?.trim() || rawMatch.serie?.name?.trim() || null,
+    source: "pandascore",
+    updatedAt
   };
 }
