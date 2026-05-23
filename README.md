@@ -4,8 +4,8 @@
 
 ## 当前版本
 
-- 版本：`0.1.0`
-- 状态：MVP 第一版可用
+- 版本：`0.2.0`
+- 状态：MVP 第一版可用，工程化收口中
 - 运行方式：本地开发服务
 - 数据源：PandaScore API
 
@@ -28,6 +28,8 @@
   - 赛后统计可用标记
 - 处理 loading、error、empty 和 stale 状态。
 - 支持生产构建。
+- API 集成测试覆盖健康检查、参数透传和校验错误。
+- 前端人工验收清单见 [docs/frontend-acceptance-checklist.md](./docs/frontend-acceptance-checklist.md)。
 
 ## 本地启动
 
@@ -74,4 +76,3 @@ npm run build
 ## 更新流程
 
 后续更新必须按版本流程执行，不能直接散改。流程见 [docs/release-process.md](./docs/release-process.md)。
-
