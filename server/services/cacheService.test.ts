@@ -15,6 +15,7 @@ describe("cacheService", () => {
         view: "results",
         game: "lol",
         status: "finished",
+        tier: "S,A",
         query: "edg",
         league: "lpl",
         team: "edg",
@@ -22,7 +23,7 @@ describe("cacheService", () => {
         stage: "playoffs",
         sort: "beginAt_desc"
       })
-    ).toBe("matches:v2:2026-05-01:2026-05-24:results:lol:finished:edg:lpl:edg:cn:playoffs:beginAt_desc");
+    ).toBe("matches:v2:2026-05-01:2026-05-24:results:lol:finished:S,A:edg:lpl:edg:cn:playoffs:beginAt_desc");
   });
 
   it("returns fresh entries and hides expired ones from getFresh", () => {

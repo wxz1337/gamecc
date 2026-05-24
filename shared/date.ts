@@ -52,6 +52,20 @@ export function getBeijingTodayDate(): string {
   return formatInTimeZone(new Date(), BEIJING_TIME_ZONE, "yyyy-MM-dd");
 }
 
+export function getBeijingWeekDates(referenceDate: string = getBeijingTodayDate()): string[] {
+  if (!isValidDateString(referenceDate)) {
+    throw new Error(`Invalid date string: ${referenceDate}`);
+  }
+
+  const referenceDay = new Date(`${referenceDate}T00:00:00.000Z`);
+  const weekStartOffset = (referenceDay.getUTCDay() + 6) % 7;
+  const weekStartDate = addDays(referenceDay, -weekStartOffset);
+
+  return Array.from({ length: 7 }, (_, index) =>
+    formatInTimeZone(addDays(weekStartDate, index), BEIJING_TIME_ZONE, "yyyy-MM-dd")
+  );
+}
+
 export function addBeijingDays(date: string, days: number): string {
   if (!isValidDateString(date)) {
     throw new Error(`Invalid date string: ${date}`);

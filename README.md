@@ -13,12 +13,10 @@
 
 ## 已实现能力
 
-- 默认展示北京时间今天到未来 7 天赛程。
-- 支持今天、明天、未来 7 天、最近 7 天和自定义 31 天内日期范围。
-- 支持赛程/赛果视图切换，赛果默认按已结束比赛倒序展示。
-- 支持全部、CS2、VALORANT、LoL 筛选。
-- 支持状态、赛事、队伍、赛区/国家、阶段和全局关键词筛选。
-- 支持时间、状态、更新时间和赛事名称排序。
+- 默认展示北京时间当天比赛。
+- 支持本周七天快捷项、上一周/下一周切换和自定义日期选择。
+- 支持全部、LoL、CS2、VALORANT 游戏筛选。
+- 支持随游戏变化的赛区筛选、PandaScore 赛事级别筛选和全部比赛/未开始/进行中/已结束状态筛选。
 - 通过后端代理请求 PandaScore，前端不暴露 token。
 - 支持内存缓存、手动刷新和 stale 兜底。
 - 展示比赛时间、项目、赛事、队伍、状态和 BO 赛制。
@@ -56,6 +54,7 @@ DEFAULT_TIMEZONE=Asia/Shanghai
 CACHE_TTL_SECONDS=900
 PANDASCORE_REQUEST_TIMEOUT_MS=8000
 PORT=3001
+VITE_API_BASE_URL=http://localhost:3001
 ```
 
 4. 启动开发服务：
@@ -68,6 +67,8 @@ npm run dev
 
 - 前端：http://localhost:5173/
 - 后端：http://localhost:3001/api/health
+
+`VITE_API_BASE_URL` 用于生产构建预览或静态部署时指定后端地址；本地 `npm run dev` 即使不配置也会通过 Vite 代理访问后端。
 
 ## 验证命令
 

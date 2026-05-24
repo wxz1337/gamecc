@@ -19,8 +19,14 @@ type FetchMatchesParams = {
   signal?: AbortSignal;
 };
 
+function getApiUrl(path: string): URL {
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+
+  return new URL(path, apiBaseUrl || window.location.origin);
+}
+
 export async function fetchMatches({ filters, refresh = false, signal }: FetchMatchesParams): Promise<MatchesResponse> {
-  const url = new URL("/api/matches", window.location.origin);
+  const url = getApiUrl("/api/matches");
 
   const searchParams = buildMatchPageSearchParams(filters);
 

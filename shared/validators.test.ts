@@ -7,6 +7,7 @@ import {
   parseMatchQueryParams,
   parseMatchSort,
   parseMatchStatus,
+  parseMatchTier,
   parseMatchView,
   parseOptionalTextFilter
 } from "./validators.js";
@@ -51,9 +52,14 @@ describe("validators", () => {
     expect(parseMatchView(undefined)).toBe("schedule");
     expect(parseMatchStatus(undefined)).toBe("all");
     expect(parseMatchSort(undefined)).toBe("beginAt_asc");
+    expect(parseMatchTier(undefined)).toBe("S,A");
+    expect(parseMatchTier("all")).toBe("all");
+    expect(parseMatchTier("a")).toBe("A");
+    expect(parseMatchTier("a,s")).toBe("S,A");
     expect(parseOptionalTextFilter("  LPL  ", ERROR_CODES.INVALID_FILTER)).toBe("LPL");
     expect(() => parseMatchStatus("pending")).toThrow(AppError);
     expect(() => parseMatchSort("updated_at")).toThrow(AppError);
+    expect(() => parseMatchTier("D")).toThrow(AppError);
   });
 
   it("normalizes legacy and default query parameters", () => {
@@ -71,6 +77,7 @@ describe("validators", () => {
       to: "2026-05-24",
       game: "all",
       status: "finished",
+      tier: "S,A",
       query: "edg",
       sort: "beginAt_desc",
       refresh: false

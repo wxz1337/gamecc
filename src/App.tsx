@@ -1,36 +1,45 @@
 import { useEffect, useMemo, useState } from "react";
-import { BEIJING_TIME_ZONE, addBeijingDays, getBeijingTodayDate } from "../shared/date";
-import { MAX_MATCH_RANGE_DAYS, MatchPageState, buildMatchPageSearchParams, getNextViewState, parseMatchPageState, resetMatchPageState } from "./utils/matchPageState";
-import { GAME_FILTER_OPTIONS, GAME_LABELS, STATUS_LABELS } from "./constants/matches";
+import { BEIJING_TIME_ZONE, addBeijingDays, getBeijingTodayDate, getBeijingWeekDates, isValidDateString } from "../shared/date";
+import { MatchPageState, buildMatchPageSearchParams, parseMatchPageState, resetMatchPageState } from "./utils/matchPageState";
+import {
+  GAME_FILTER_OPTIONS,
+  GAME_LABELS,
+  MATCH_STATUS_FILTER_OPTIONS,
+  REGION_FILTER_OPTIONS,
+  STATUS_LABELS,
+  TIER_FILTER_OPTIONS
+} from "./constants/matches";
 import { useMatches } from "./hooks/useMatches";
 import { EmptyState, ErrorState, LoadingState } from "./components/StatePanels";
 import { MatchList } from "./components/MatchList";
+import { MatchCalendarPicker } from "./components/MatchCalendarPicker";
 import { formatUpdatedAt, getEmptyStateMessage } from "./utils/matchFormatters";
+import type { MatchTier } from "../shared/match";
 
-const VIEW_LABELS = {
-  schedule: "赛程",
-  results: "赛果"
-} as const;
+const WEEKDAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"] as const;
+const TIER_ORDER: MatchTier[] = ["S", "A", "B", "C"];
 
-const STATUS_OPTIONS = [
-  { label: "全部状态", value: "all" as const },
-  { label: "未开始", value: "not_started" as const },
-  { label: "进行中", value: "running" as const },
-  { label: "已结束", value: "finished" as const },
-  { label: "延期", value: "postponed" as const },
-  { label: "取消", value: "cancelled" as const }
-];
+function getSelectedTiers(tier: MatchPageState["tier"]): MatchTier[] {
+  if (tier === "all") {
+    return [];
+  }
 
-const SORT_OPTIONS = [
-  { label: "时间升序", value: "beginAt_asc" as const },
-  { label: "时间降序", value: "beginAt_desc" as const },
-  { label: "状态优先", value: "status" as const },
-  { label: "更新时间", value: "updatedAt_desc" as const },
-  { label: "赛事名称", value: "league" as const }
-];
+  return TIER_ORDER.filter((value) => tier.split(",").includes(value));
+}
+
+function formatTierLabel(tier: MatchPageState["tier"]): string {
+  if (tier === "all") {
+    return "全部级别";
+  }
+
+  const selectedTiers = getSelectedTiers(tier);
+
+  return selectedTiers.length > 0 ? selectedTiers.map((value) => `${value}级`).join(" / ") : "S级 / A级";
+}
 
 function App() {
   const [filters, setFilters] = useState<MatchPageState>(() => parseMatchPageState(window.location.search));
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   useEffect(() => {
     const onPopState = () => {
@@ -57,16 +66,24 @@ function App() {
   const { data, loading, error, source, refresh } = useMatches({ filters });
 
   const today = useMemo(() => getBeijingTodayDate(), []);
-  const tomorrow = useMemo(() => addBeijingDays(today, 1), [today]);
-  const nextSevenDays = useMemo(() => addBeijingDays(today, 7), [today]);
-  const recentSevenDays = useMemo(() => addBeijingDays(today, -6), [today]);
+  const weekDates = useMemo(() => getBeijingWeekDates(filters.from), [filters.from]);
+  const regionOptions = REGION_FILTER_OPTIONS[filters.game];
+  const selectedRegionLabel = regionOptions.find((option) => option.value === filters.region)?.label ?? "自定义赛区";
+  const selectedTierLabel = formatTierLabel(filters.tier);
+  const selectedTiers = getSelectedTiers(filters.tier);
+  const currentStateLabel = filters.status === "all" ? "全部比赛" : STATUS_LABELS[filters.status];
+  const currentGameLabel = filters.game === "all" ? "全部游戏" : GAME_LABELS[filters.game];
+  const totalLabel = data ? `${data.total} 场比赛` : "等待加载";
+  const statusMessage = data?.stale ? "数据可能不是最新，已展示缓存内容。" : null;
+  const matchCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
 
-  const rangeStartMax = useMemo(() => {
-    const lastValidStart = addBeijingDays(filters.to, -(MAX_MATCH_RANGE_DAYS - 1));
+    data?.matches.forEach((match) => {
+      counts[match.displayDate] = (counts[match.displayDate] ?? 0) + 1;
+    });
 
-    return filters.to < lastValidStart ? filters.to : lastValidStart;
-  }, [filters.to]);
-  const rangeEndMax = useMemo(() => addBeijingDays(filters.from, MAX_MATCH_RANGE_DAYS - 1), [filters.from]);
+    return counts;
+  }, [data]);
 
   const updateField = <K extends keyof MatchPageState>(key: K, value: MatchPageState[K]) => {
     setFilters((current) => ({
@@ -75,55 +92,54 @@ function App() {
     }));
   };
 
-  const updateFromDate = (from: string) => {
-    setFilters((current) => {
-      const maxTo = addBeijingDays(from, MAX_MATCH_RANGE_DAYS - 1);
-
-      return {
-        ...current,
-        from,
-        to: current.to < from ? from : current.to > maxTo ? maxTo : current.to
-      };
-    });
-  };
-
-  const updateToDate = (to: string) => {
-    setFilters((current) => {
-      const minFrom = addBeijingDays(to, -(MAX_MATCH_RANGE_DAYS - 1));
-
-      return {
-        ...current,
-        from: current.from > to ? to : current.from < minFrom ? minFrom : current.from,
-        to
-      };
-    });
-  };
-
-  const applyQuickRange = (nextView: MatchPageState["view"], from: string, to: string, status: MatchPageState["status"], sort: MatchPageState["sort"]) => {
+  const updateGame = (game: MatchPageState["game"]) => {
     setFilters((current) => ({
       ...current,
-      view: nextView,
-      from,
-      to,
-      status,
-      sort
+      game,
+      region: ""
     }));
   };
 
-  const handleViewChange = (nextView: MatchPageState["view"]) => {
-    setFilters((current) => getNextViewState(current, nextView));
+  const updateTier = (tier: "all" | MatchTier) => {
+    if (tier === "all") {
+      updateField("tier", "all");
+      return;
+    }
+
+    setFilters((current) => {
+      const currentTiers = getSelectedTiers(current.tier);
+      const nextTiers = currentTiers.includes(tier)
+        ? currentTiers.filter((value) => value !== tier)
+        : [...currentTiers, tier];
+      const normalizedTiers = TIER_ORDER.filter((value) => nextTiers.includes(value));
+
+      return {
+        ...current,
+        tier: normalizedTiers.length > 0 ? normalizedTiers.join(",") : "all"
+      };
+    });
+  };
+
+  const updateSelectedDate = (date: string) => {
+    if (!isValidDateString(date)) {
+      return;
+    }
+
+    setIsCalendarOpen(false);
+    setFilters((current) => ({
+      ...current,
+      from: date,
+      to: date
+    }));
+  };
+
+  const moveWeek = (days: number) => {
+    updateSelectedDate(addBeijingDays(filters.from, days));
   };
 
   const handleReset = () => {
-    setFilters((current) => resetMatchPageState(current.view));
+    setFilters(resetMatchPageState("schedule"));
   };
-
-  const currentRangeLabel = filters.from === filters.to ? filters.from : `${filters.from} → ${filters.to}`;
-  const currentStateLabel = filters.status === "all" ? "全部状态" : STATUS_LABELS[filters.status];
-  const currentGameLabel = filters.game === "all" ? "全部游戏" : GAME_LABELS[filters.game];
-  const totalLabel = data ? `${data.total} 场比赛` : "等待加载";
-  const statusMessage = data?.stale ? "数据可能不是最新，已展示缓存内容。" : null;
-  const isResultsView = filters.view === "results";
 
   return (
     <div className="page-shell">
@@ -136,22 +152,22 @@ function App() {
             <p className="eyebrow">PandaScore 赛事查询工具</p>
             <h1>电竞赛程聚合</h1>
             <p className="hero-copy">
-              以北京时间为基准，按赛程或赛果视图查询未来赛程、历史结果与多维筛选内容，支持详情展开和 URL 恢复。
+              以北京时间为基准，按游戏、赛区、赛事级别和比赛状态查看每日电竞比赛。
             </p>
           </div>
 
           <div className="hero-meta">
             <div className="meta-card">
-              <span className="meta-card__label">当前视图</span>
-              <strong>{VIEW_LABELS[filters.view]}</strong>
+              <span className="meta-card__label">当前日期</span>
+              <strong>{filters.from}</strong>
             </div>
             <div className="meta-card">
-              <span className="meta-card__label">查询范围</span>
-              <strong>{currentRangeLabel}</strong>
+              <span className="meta-card__label">赛事筛选</span>
+              <strong>{currentGameLabel} · {selectedRegionLabel}</strong>
             </div>
             <div className="meta-card">
               <span className="meta-card__label">当前条件</span>
-              <strong>{currentGameLabel} · {currentStateLabel}</strong>
+              <strong>{selectedTierLabel} · {currentStateLabel}</strong>
             </div>
             <button className="primary-button" onClick={refresh} type="button" disabled={loading}>
               刷新
@@ -159,149 +175,127 @@ function App() {
           </div>
         </section>
 
-        <section className="control-panel">
-          <div className="control-row">
-            <div className="control-group">
-              <span className="control-group__label">视图</span>
+        <section className="control-panel calendar-panel">
+          <div className="calendar-filters">
+            <div className="filter-line">
+              <span className="control-group__label">游戏</span>
               <div className="segmented-control">
-                <button
-                  className={filters.view === "schedule" ? "segmented-control__button is-active" : "segmented-control__button"}
-                  onClick={() => handleViewChange("schedule")}
-                  type="button"
-                >
-                  赛程
-                </button>
-                <button
-                  className={filters.view === "results" ? "segmented-control__button is-active" : "segmented-control__button"}
-                  onClick={() => handleViewChange("results")}
-                  type="button"
-                >
-                  赛果
-                </button>
+                {GAME_FILTER_OPTIONS.map((option) => (
+                  <button
+                    className={filters.game === option.value ? "segmented-control__button is-active" : "segmented-control__button"}
+                    key={option.value}
+                    onClick={() => updateGame(option.value)}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="control-group">
-              <span className="control-group__label">日期快捷项</span>
-              <div className="segmented-control segmented-control--wrap">
-                <button className="segmented-control__button" onClick={() => applyQuickRange("schedule", today, today, "all", "beginAt_asc")} type="button">
-                  今天
-                </button>
-                <button className="segmented-control__button" onClick={() => applyQuickRange("schedule", tomorrow, tomorrow, "all", "beginAt_asc")} type="button">
-                  明天
-                </button>
-                <button className="segmented-control__button" onClick={() => applyQuickRange("schedule", today, nextSevenDays, "all", "beginAt_asc")} type="button">
-                  未来 7 天
-                </button>
-                <button className="segmented-control__button" onClick={() => applyQuickRange("results", recentSevenDays, today, "finished", "beginAt_desc")} type="button">
-                  最近 7 天
-                </button>
-                <button className="segmented-control__button" onClick={() => applyQuickRange("results", recentSevenDays, today, "finished", "beginAt_desc")} type="button">
-                  过去比赛
-                </button>
-                <button className="segmented-control__button" onClick={() => applyQuickRange("schedule", today, nextSevenDays, "all", "beginAt_asc")} type="button">
-                  未来赛程
-                </button>
+            <div className="filter-line">
+              <span className="control-group__label">赛区</span>
+              <div className="segmented-control">
+                {regionOptions.map((option) => (
+                  <button
+                    className={filters.region === option.value ? "segmented-control__button is-active" : "segmented-control__button"}
+                    key={option.label}
+                    onClick={() => updateField("region", option.value)}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="filter-line filter-line--split">
+              <div>
+                <span className="control-group__label">赛事级别</span>
+                <div className="segmented-control">
+                  {TIER_FILTER_OPTIONS.map((option) => (
+                    <button
+                      className={
+                        option.value === "all"
+                          ? filters.tier === "all" ? "segmented-control__button is-active" : "segmented-control__button"
+                          : selectedTiers.includes(option.value) ? "segmented-control__button is-active" : "segmented-control__button"
+                      }
+                      key={option.value}
+                      onClick={() => updateTier(option.value)}
+                      type="button"
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <span className="control-group__label">状态</span>
+                <div className="segmented-control">
+                  {MATCH_STATUS_FILTER_OPTIONS.map((option) => (
+                    <button
+                      className={filters.status === option.value ? "segmented-control__button is-active" : "segmented-control__button"}
+                      key={option.value}
+                      onClick={() => updateField("status", option.value)}
+                      type="button"
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="control-grid">
-            <label className="field-group">
-              <span className="control-group__label">开始日期</span>
-              <input
-                className="field-input"
-                min={rangeStartMax}
-                max={filters.to}
-                onChange={(event) => updateFromDate(event.target.value)}
-                type="date"
-                value={filters.from}
-              />
-            </label>
+          <div className="week-calendar">
+            <button className="week-calendar__arrow" onClick={() => moveWeek(-7)} type="button" aria-label="上一周">
+              ‹
+            </button>
 
-            <label className="field-group">
-              <span className="control-group__label">结束日期</span>
-              <input
-                className="field-input"
-                min={filters.from}
-                max={rangeEndMax}
-                onChange={(event) => updateToDate(event.target.value)}
-                type="date"
-                value={filters.to}
-              />
-            </label>
+            <div className="week-calendar__days">
+              {weekDates.map((date) => {
+                const day = new Date(`${date}T00:00:00.000Z`);
+                const weekday = WEEKDAY_LABELS[day.getUTCDay()];
+                const dayLabel = date.slice(5).replace("-", ".");
+                const isSelected = filters.from === date;
 
-            <label className="field-group">
-              <span className="control-group__label">游戏</span>
-              <select className="field-input" onChange={(event) => updateField("game", event.target.value as MatchPageState["game"])} value={filters.game}>
-                {GAME_FILTER_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+                return (
+                  <button
+                    className={isSelected ? "day-button is-active" : "day-button"}
+                    key={date}
+                    onClick={() => updateSelectedDate(date)}
+                    type="button"
+                  >
+                    <strong>{dayLabel}</strong>
+                    <span>{date === today ? "今天" : weekday}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-            <label className="field-group">
-              <span className="control-group__label">状态</span>
-              <select className="field-input" onChange={(event) => updateField("status", event.target.value as MatchPageState["status"])} value={filters.status}>
-                {STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <button className="week-calendar__arrow" onClick={() => moveWeek(7)} type="button" aria-label="下一周">
+              ›
+            </button>
 
-            <label className="field-group">
-              <span className="control-group__label">排序</span>
-              <select className="field-input" onChange={(event) => updateField("sort", event.target.value as MatchPageState["sort"])} value={filters.sort}>
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field-group field-group--wide">
-              <span className="control-group__label">全局搜索</span>
-              <input
-                className="field-input"
-                onChange={(event) => updateField("query", event.target.value)}
-                placeholder="队伍、赛事、联赛、游戏展示名"
-                type="search"
-                value={filters.query}
-              />
-            </label>
-
-            <label className="field-group">
-              <span className="control-group__label">赛事</span>
-              <input className="field-input" onChange={(event) => updateField("league", event.target.value)} placeholder="LPL / ESL / VCT" type="text" value={filters.league} />
-            </label>
-
-            <label className="field-group">
-              <span className="control-group__label">队伍</span>
-              <input className="field-input" onChange={(event) => updateField("team", event.target.value)} placeholder="EDG / BLG / Vitality" type="text" value={filters.team} />
-            </label>
-
-            <label className="field-group">
-              <span className="control-group__label">赛区 / 国家</span>
-              <input className="field-input" onChange={(event) => updateField("region", event.target.value)} placeholder="CN / KR / Pacific" type="text" value={filters.region} />
-            </label>
-
-            <label className="field-group">
-              <span className="control-group__label">阶段</span>
-              <input className="field-input" onChange={(event) => updateField("stage", event.target.value)} placeholder="小组赛 / 季后赛 / 决赛" type="text" value={filters.stage} />
-            </label>
+            <div className="calendar-picker-control">
+              <button
+                className={isCalendarOpen ? "calendar-picker-trigger is-active" : "calendar-picker-trigger"}
+                onClick={() => setIsCalendarOpen((current) => !current)}
+                type="button"
+              >
+                <span aria-hidden="true">▣</span>
+                选择日期
+              </button>
+            </div>
           </div>
 
           <div className="control-actions">
             <button className="secondary-button" onClick={handleReset} type="button">
-              清空筛选
+              重置
             </button>
             <div className="control-caption">
-              <span>{isResultsView ? "赛果默认最近 7 天、已结束、时间降序。" : "赛程默认今天到未来 7 天、时间升序。"}</span>
+              <span>默认显示今天 · 全部游戏 · 全部赛区 · PandaScore S级/A级 · 全部比赛。</span>
             </div>
           </div>
         </section>
@@ -338,6 +332,16 @@ function App() {
           </div>
         </footer>
       </main>
+
+      {isCalendarOpen ? (
+        <MatchCalendarPicker
+          matchCounts={matchCounts}
+          onClose={() => setIsCalendarOpen(false)}
+          onSelectDate={updateSelectedDate}
+          selectedDate={filters.from}
+          today={today}
+        />
+      ) : null}
     </div>
   );
 }

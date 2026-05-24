@@ -17,6 +17,7 @@ type MatchTemplate = {
   offsetMinutes: number;
   status: MatchStatus;
   bestOf: number;
+  tier: string;
   teams: Match["teams"];
 };
 
@@ -28,6 +29,7 @@ const MOCK_MATCH_TEMPLATES: MatchTemplate[] = [
     offsetMinutes: 180,
     status: "not_started",
     bestOf: 3,
+    tier: "S",
     teams: [
       { id: null, name: "Team Vitality", acronym: "VIT", imageUrl: null, darkModeImageUrl: null, location: "FR" },
       { id: null, name: "MOUZ", acronym: "MOUZ", imageUrl: null, darkModeImageUrl: null, location: "DE" }
@@ -40,6 +42,7 @@ const MOCK_MATCH_TEMPLATES: MatchTemplate[] = [
     offsetMinutes: 120,
     status: "running",
     bestOf: 3,
+    tier: "S",
     teams: [
       { id: null, name: "Bilibili Gaming", acronym: "BLG", imageUrl: null, darkModeImageUrl: null, location: "CN" },
       { id: null, name: "Top Esports", acronym: "TES", imageUrl: null, darkModeImageUrl: null, location: "CN" }
@@ -52,6 +55,7 @@ const MOCK_MATCH_TEMPLATES: MatchTemplate[] = [
     offsetMinutes: 60,
     status: "finished",
     bestOf: 3,
+    tier: "S",
     teams: [
       { id: null, name: "Paper Rex", acronym: "PRX", imageUrl: null, darkModeImageUrl: null, location: "SG" },
       { id: null, name: "DRX", acronym: "DRX", imageUrl: null, darkModeImageUrl: null, location: "KR" }
@@ -78,7 +82,7 @@ function buildMatch(date: string, template: MatchTemplate): Match {
     tournamentType: "online",
     tournamentCountry: null,
     tournamentRegion: null,
-    tournamentTier: null,
+    tournamentTier: template.tier,
     tournamentPrizepool: null,
     hasBracket: null,
     beginAt,
@@ -174,6 +178,10 @@ function applyFilters(matches: Match[], filters: MatchPageState): Match[] {
     }
 
     if (filters.status !== "all" && match.status !== filters.status) {
+      return false;
+    }
+
+    if (filters.tier !== "all" && !filters.tier.split(",").includes(match.tournamentTier?.trim().toUpperCase() ?? "")) {
       return false;
     }
 

@@ -84,10 +84,11 @@ export function getEmptyStateMessage(filters: {
   team?: string;
   region?: string;
   stage?: string;
+  tier?: string;
 }): string {
-  if (filters.query || filters.league || filters.team || filters.region || filters.stage) {
-    return "当前筛选条件下没有匹配的比赛，请尝试放宽日期范围或清空部分筛选。";
+  if (filters.query || filters.league || filters.team || filters.region || filters.stage || (filters.tier && filters.tier !== "all" && filters.tier !== "S,A")) {
+    return "当前筛选条件下没有匹配的比赛，请尝试放宽赛事级别、赛区或状态筛选。";
   }
 
-  return filters.game === "all" ? "当前日期范围内暂无已收录比赛。" : "当前筛选游戏在所选日期范围内没有比赛。";
+  return filters.game === "all" ? "当天暂无已收录比赛。" : "当前筛选游戏在当天没有比赛。";
 }

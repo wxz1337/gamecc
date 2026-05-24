@@ -17,6 +17,7 @@ function buildQuery(overrides: Partial<MatchQuery> = {}): MatchQuery {
     view: "results",
     game: "lol",
     status: "finished",
+    tier: "S,A",
     sort: "beginAt_desc",
     refresh: true,
     ...overrides
@@ -34,6 +35,7 @@ type RawMatchOverrides = {
   league?: string;
   serie?: string;
   tournament?: string;
+  tier?: string;
   stage?: string;
   country?: string;
   region?: string;
@@ -65,7 +67,7 @@ function buildRawMatch(overrides: RawMatchOverrides): PandaScoreMatch {
       type: overrides.stage ?? "playoffs",
       country: overrides.country ?? "CN",
       region: overrides.region ?? "China",
-      tier: "S",
+      tier: overrides.tier ?? "S",
       prizepool: null,
       has_bracket: true,
       detailed_stats: true
@@ -153,5 +155,26 @@ describe("matchService", () => {
         endUtc: expect.any(Date)
       })
     );
+  });
+
+  it("filters matches by tournament tier", async () => {
+    mockedFetchPandaScoreMatches.mockResolvedValue([
+      buildRawMatch({
+        id: 1,
+        begin_at: "2026-05-02T12:00:00.000Z",
+        tier: "S",
+        name: "Top Tier Match"
+      }),
+      buildRawMatch({
+        id: 2,
+        begin_at: "2026-05-03T12:00:00.000Z",
+        tier: "A",
+        name: "Second Tier Match"
+      })
+    ]);
+
+    const response = await getMatches(buildQuery({ status: "all", tier: "S,A" }));
+
+    expect(response.matches.map((match) => match.tournamentTier).sort()).toEqual(["A", "S"]);
   });
 });

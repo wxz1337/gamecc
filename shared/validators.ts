@@ -1,10 +1,12 @@
-import { addBeijingDays, getBeijingTodayDate, getDateSpanDays, isValidDateString } from "./date.js";
+import { getBeijingTodayDate, getDateSpanDays, isValidDateString } from "./date.js";
 import {
   GameFilter,
   MatchFilters,
   MatchQuery,
   MatchSort,
   MatchStatusFilter,
+  MatchTier,
+  MatchTierFilter,
   MatchView
 } from "./match.js";
 import { AppError, ERROR_CODES } from "./errors.js";
@@ -13,6 +15,7 @@ const VALID_GAME_FILTERS: GameFilter[] = ["all", "cs2", "valorant", "lol"];
 const VALID_STATUS_FILTERS: MatchStatusFilter[] = ["all", "not_started", "running", "finished", "postponed", "cancelled"];
 const VALID_SORTS: MatchSort[] = ["beginAt_asc", "beginAt_desc", "status", "updatedAt_desc", "league"];
 const VALID_VIEWS: MatchView[] = ["schedule", "results"];
+const VALID_TIERS: MatchTier[] = ["S", "A", "B", "C"];
 
 function getStringValue(value: string | string[] | null | undefined): string | undefined {
   if (typeof value === "string") {
@@ -157,6 +160,34 @@ export function parseMatchSort(value: string | null | undefined): MatchSort {
   throw new AppError(ERROR_CODES.INVALID_SORT, "不支持的排序方式", 400);
 }
 
+export function parseMatchTier(value: string | null | undefined): MatchTierFilter {
+  if (value == null || value.trim() === "") {
+    return "S,A";
+  }
+
+  const trimmedValue = value.trim();
+  if (trimmedValue.toLowerCase() === "all") {
+    return "all";
+  }
+
+  const requestedTiers = trimmedValue
+    .split(",")
+    .map((tier) => tier.trim().toUpperCase())
+    .filter(Boolean);
+
+  if (requestedTiers.length === 0) {
+    return "S,A";
+  }
+
+  const uniqueTiers = [...new Set(requestedTiers)];
+
+  if (uniqueTiers.some((tier) => !VALID_TIERS.includes(tier as MatchTier))) {
+    throw new AppError(ERROR_CODES.INVALID_FILTER, "不支持的赛事级别筛选", 400);
+  }
+
+  return VALID_TIERS.filter((tier) => uniqueTiers.includes(tier)).join(",");
+}
+
 export function parseOptionalTextFilter(
   value: string | string[] | null | undefined,
   code: typeof ERROR_CODES.INVALID_QUERY | typeof ERROR_CODES.INVALID_FILTER
@@ -178,8 +209,8 @@ export function parseMatchQueryParams(query: Record<string, string | string[] | 
   const view = parseMatchView(getStringValue(query.view));
   const dateRange = parseDateRange(getStringValue(query.date), getStringValue(query.from), getStringValue(query.to));
   const hasExplicitDateRange = getStringValue(query.from) != null || getStringValue(query.to) != null || getStringValue(query.date) != null;
-  const defaultFrom = view === "results" ? addBeijingDays(getBeijingTodayDate(), -6) : getBeijingTodayDate();
-  const defaultTo = view === "results" ? getBeijingTodayDate() : addBeijingDays(getBeijingTodayDate(), 7);
+  const defaultFrom = getBeijingTodayDate();
+  const defaultTo = defaultFrom;
   const status = parseMatchStatus(getStringValue(query.status));
   const sort = parseMatchSort(getStringValue(query.sort));
 
@@ -188,13 +219,14 @@ export function parseMatchQueryParams(query: Record<string, string | string[] | 
     date: dateRange.date,
     view,
     game: parseGameFilter(getStringValue(query.game)),
-    status: status === "all" && view === "results" ? "finished" : status,
+    status,
+    tier: parseMatchTier(getStringValue(query.tier)),
     query: parseOptionalTextFilter(query.query, ERROR_CODES.INVALID_QUERY),
     league: parseOptionalTextFilter(query.league, ERROR_CODES.INVALID_FILTER),
     team: parseOptionalTextFilter(query.team, ERROR_CODES.INVALID_FILTER),
     region: parseOptionalTextFilter(query.region, ERROR_CODES.INVALID_FILTER),
     stage: parseOptionalTextFilter(query.stage, ERROR_CODES.INVALID_FILTER),
-    sort: sort === "beginAt_asc" && view === "results" ? "beginAt_desc" : sort,
+    sort,
     refresh: getStringValue(query.refresh) === "1"
   };
 }

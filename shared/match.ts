@@ -13,6 +13,8 @@ export type MatchStatusFilter = "all" | MatchStatus;
 export type MatchSort = "beginAt_asc" | "beginAt_desc" | "status" | "updatedAt_desc" | "league";
 
 export type MatchView = "schedule" | "results";
+export type MatchTier = "S" | "A" | "B" | "C";
+export type MatchTierFilter = "all" | string;
 
 export type MatchFilters = {
   view: MatchView;
@@ -20,6 +22,7 @@ export type MatchFilters = {
   to: string;
   game: GameFilter;
   status: MatchStatusFilter;
+  tier: MatchTierFilter;
   query?: string;
   league?: string;
   team?: string;
@@ -49,6 +52,7 @@ export type MatchQuery = {
   view: MatchView;
   game: GameFilter;
   status: MatchStatusFilter;
+  tier: MatchTierFilter;
   query?: string;
   league?: string;
   team?: string;

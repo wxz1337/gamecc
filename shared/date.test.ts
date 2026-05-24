@@ -5,6 +5,7 @@ import {
   formatBeijingDateTime,
   getBeijingDateRangeUtc,
   getBeijingDayRangeUtc,
+  getBeijingWeekDates,
   getDateSpanDays,
   isValidDateString
 } from "./date.js";
@@ -44,5 +45,17 @@ describe("date utilities", () => {
   it("counts inclusive Beijing date spans and adds days correctly", () => {
     expect(getDateSpanDays("2026-05-01", "2026-05-31")).toBe(31);
     expect(addBeijingDays("2026-05-24", 7)).toBe("2026-05-31");
+  });
+
+  it("returns the Monday to Sunday dates for the reference week", () => {
+    expect(getBeijingWeekDates("2026-05-24")).toEqual([
+      "2026-05-18",
+      "2026-05-19",
+      "2026-05-20",
+      "2026-05-21",
+      "2026-05-22",
+      "2026-05-23",
+      "2026-05-24"
+    ]);
   });
 });

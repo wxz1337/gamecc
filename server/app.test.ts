@@ -22,7 +22,8 @@ const sampleResponse: MatchesResponse = {
     from: "2026-05-24",
     to: "2026-05-24",
     game: "cs2",
-    status: "all"
+    status: "all",
+    tier: "S,A"
   },
   sort: "beginAt_asc",
   stale: false,
@@ -124,6 +125,7 @@ describe("API app", () => {
         refresh: true,
         view: "schedule",
         status: "all",
+        tier: "S,A",
         sort: "beginAt_asc"
       })
     );

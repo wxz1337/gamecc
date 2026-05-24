@@ -37,6 +37,7 @@ export function buildCacheKey(query: MatchQuery | string, game?: string): string
     query.view,
     query.game,
     query.status,
+    query.tier,
     normalizeKeyPart(query.query),
     normalizeKeyPart(query.league),
     normalizeKeyPart(query.team),

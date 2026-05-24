@@ -107,7 +107,7 @@ function buildMatchSearchText(match: Match): string {
 }
 
 function getMatchRegionText(match: Match): string {
-  return [match.tournamentRegion, match.tournamentCountry, ...match.teams.map((team) => team.location ?? "")]
+  return [match.league, match.tournament, match.serie, match.tournamentRegion, match.tournamentCountry, ...match.teams.map((team) => team.location ?? "")]
     .filter((value): value is string => Boolean(value))
     .map((value) => value.toLocaleLowerCase("en-US"))
     .join(" ");
@@ -126,6 +126,16 @@ function matchesText(value: string | undefined, expected: string): boolean {
   }
 
   return expected.includes(value);
+}
+
+function matchesTier(match: Match, tier: MatchQuery["tier"]): boolean {
+  if (tier === "all") {
+    return true;
+  }
+
+  const matchTier = match.tournamentTier?.trim().toUpperCase();
+
+  return matchTier != null && matchTier !== "" && tier.split(",").includes(matchTier);
 }
 
 function matchesSearch(match: Match, query: MatchQuery): boolean {
@@ -172,6 +182,10 @@ function matchesSearch(match: Match, query: MatchQuery): boolean {
   }
 
   if (query.status !== "all" && match.status !== query.status) {
+    return false;
+  }
+
+  if (!matchesTier(match, query.tier)) {
     return false;
   }
 
@@ -281,6 +295,7 @@ function createResponse(query: MatchQuery, matches: Match[], facets: MatchFacets
       to: query.to,
       game: query.game,
       status: query.status,
+      tier: query.tier,
       query: query.query,
       league: query.league,
       team: query.team,
@@ -312,7 +327,7 @@ function buildMockMatch(date: string, template: MatchTemplate): Match {
     tournamentType: "online",
     tournamentCountry: null,
     tournamentRegion: null,
-    tournamentTier: null,
+    tournamentTier: "S",
     tournamentPrizepool: null,
     hasBracket: null,
     beginAt,
@@ -366,7 +381,8 @@ export function createMockMatchesResponse(date: string, game: GameFilter): Match
       from: date,
       to: date,
       game,
-      status: "all"
+      status: "all",
+      tier: "S,A"
     },
     sort: "beginAt_asc",
     stale: false,
