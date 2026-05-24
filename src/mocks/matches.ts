@@ -21,6 +21,23 @@ type MatchTemplate = {
   teams: Match["teams"];
 };
 
+const VALORANT_STREAM_URL =
+  "https://live.bilibili.com/24160384?live_from=81011&spm_id_from=333.1007.top_right_bar_window_history.content.click";
+const LOL_STREAM_URL =
+  "https://live.bilibili.com/7777?live_from=81011&spm_id_from=333.337.top_right_bar_window_history.content.click";
+
+function getMockStreamUrl(game: GameType): string | null {
+  if (game === "valorant") {
+    return VALORANT_STREAM_URL;
+  }
+
+  if (game === "lol") {
+    return LOL_STREAM_URL;
+  }
+
+  return null;
+}
+
 const MOCK_MATCH_TEMPLATES: MatchTemplate[] = [
   {
     game: "cs2",
@@ -104,7 +121,7 @@ function buildMatch(date: string, template: MatchTemplate): Match {
     score: [],
     games: [],
     teams: template.teams,
-    streamUrl: null,
+    streamUrl: getMockStreamUrl(template.game),
     replayUrl: null,
     serie: null,
     stage: null,

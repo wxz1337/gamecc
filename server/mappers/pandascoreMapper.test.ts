@@ -59,12 +59,44 @@ describe("pandascoreMapper", () => {
         { id: null, name: "TBD", acronym: null, imageUrl: null, darkModeImageUrl: null, location: null },
         { id: null, name: "TBD", acronym: null, imageUrl: null, darkModeImageUrl: null, location: null }
       ],
-      streamUrl: "https://example.com/stream",
+      streamUrl: "https://live.bilibili.com/7777?live_from=81011&spm_id_from=333.337.top_right_bar_window_history.content.click",
       replayUrl: null,
       serie: "LPL 2026 Spring",
       stage: null,
       source: "pandascore",
       updatedAt: expect.any(String)
     });
+  });
+
+  it("uses the configured Bilibili stream for VALORANT matches", () => {
+    const mapped = mapPandaScoreMatch(
+      {
+        id: 67890,
+        begin_at: "2026-05-23T16:00:00.000Z",
+        status: "not_started",
+        streams_list: [{ raw_url: "https://example.com/valorant" }]
+      },
+      "valorant"
+    );
+
+    expect(mapped.streamUrl).toBe(
+      "https://live.bilibili.com/24160384?live_from=81011&spm_id_from=333.1007.top_right_bar_window_history.content.click"
+    );
+  });
+
+  it("uses the configured Bilibili stream for LoL matches", () => {
+    const mapped = mapPandaScoreMatch(
+      {
+        id: 67891,
+        begin_at: "2026-05-23T16:00:00.000Z",
+        status: "not_started",
+        streams_list: [{ raw_url: "https://example.com/lol" }]
+      },
+      "lol"
+    );
+
+    expect(mapped.streamUrl).toBe(
+      "https://live.bilibili.com/7777?live_from=81011&spm_id_from=333.337.top_right_bar_window_history.content.click"
+    );
   });
 });

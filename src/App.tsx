@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { CalendarClock, Database, RefreshCw, RotateCcw, Sparkles, Trophy } from "lucide-react";
 import { BEIJING_TIME_ZONE, addBeijingDays, getBeijingTodayDate, getBeijingWeekDates, isValidDateString } from "../shared/date";
 import { MatchPageState, buildMatchPageSearchParams, parseMatchPageState, resetMatchPageState } from "./utils/matchPageState";
 import {
@@ -14,9 +16,14 @@ import { EmptyState, ErrorState, LoadingState } from "./components/StatePanels";
 import { MatchList } from "./components/MatchList";
 import { MatchCalendarPicker } from "./components/MatchCalendarPicker";
 import { formatUpdatedAt, getEmptyStateMessage } from "./utils/matchFormatters";
+import { Button } from "./components/ui/button";
+import { Card } from "./components/ui/card";
+import { Badge } from "./components/ui/badge";
+import { FilterTabs } from "./components/FilterTabs";
+import { WeekStrip } from "./components/WeekStrip";
+import { FeaturedMatches } from "./components/FeaturedMatches";
 import type { MatchTier } from "../shared/match";
 
-const WEEKDAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"] as const;
 const TIER_ORDER: MatchTier[] = ["S", "A", "B", "C"];
 
 function getSelectedTiers(tier: MatchPageState["tier"]): MatchTier[] {
@@ -73,8 +80,10 @@ function App() {
   const selectedTiers = getSelectedTiers(filters.tier);
   const currentStateLabel = filters.status === "all" ? "全部比赛" : STATUS_LABELS[filters.status];
   const currentGameLabel = filters.game === "all" ? "全部游戏" : GAME_LABELS[filters.game];
-  const totalLabel = data ? `${data.total} 场比赛` : "等待加载";
+  const totalLabel = data ? `${data.total} 场` : loading ? "同步中" : "未载入";
+  const runningCount = data?.matches.filter((match) => match.status === "running").length ?? 0;
   const statusMessage = data?.stale ? "数据可能不是最新，已展示缓存内容。" : null;
+  const featuredTitle = filters.from === today ? "今日重点" : "当日重点";
   const matchCounts = useMemo(() => {
     const counts: Record<string, number> = {};
 
@@ -142,194 +151,134 @@ function App() {
   };
 
   return (
-    <div className="page-shell">
-      <div className="page-backdrop page-backdrop--one" />
-      <div className="page-backdrop page-backdrop--two" />
-
-      <main className="app-shell">
-        <section className="hero-panel hero-panel--compact">
-          <div>
-            <p className="eyebrow">PandaScore 赛事查询工具</p>
-            <h1>电竞赛程聚合</h1>
-            <p className="hero-copy">
-              以北京时间为基准，按游戏、赛区、赛事级别和比赛状态查看每日电竞比赛。
+    <div className="min-h-screen bg-[#f6f5f2] text-zinc-950">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+        <motion.section
+          animate={{ opacity: 1, y: 0 }}
+          className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]"
+          initial={{ opacity: 0, y: 10 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="min-w-0">
+            <Badge className="mb-3" tone="dark">
+              <Sparkles className="size-3.5" />
+              个人观赛面板
+            </Badge>
+            <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl">电竞赛程聚合</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
+              以北京时间查看每日电竞比赛，按游戏、赛区、赛事级别和状态快速收敛到今天想看的内容。
             </p>
           </div>
 
-          <div className="hero-meta">
-            <div className="meta-card">
-              <span className="meta-card__label">当前日期</span>
-              <strong>{filters.from}</strong>
-            </div>
-            <div className="meta-card">
-              <span className="meta-card__label">赛事筛选</span>
-              <strong>{currentGameLabel} · {selectedRegionLabel}</strong>
-            </div>
-            <div className="meta-card">
-              <span className="meta-card__label">当前条件</span>
-              <strong>{selectedTierLabel} · {currentStateLabel}</strong>
-            </div>
-            <button className="primary-button" onClick={refresh} type="button" disabled={loading}>
-              刷新
-            </button>
+          <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[500px]">
+            <Card className="p-4">
+              <p className="flex items-center gap-2 text-xs font-medium text-zinc-500">
+                <CalendarClock className="size-4" />
+                当前日期
+              </p>
+              <strong className="mt-2 block text-lg tabular-nums text-zinc-950">{filters.from}</strong>
+            </Card>
+            <Card className="p-4">
+              <p className="flex items-center gap-2 text-xs font-medium text-zinc-500">
+                <Trophy className="size-4" />
+                已载入
+              </p>
+              <strong className="mt-2 block text-lg text-zinc-950">{totalLabel}</strong>
+            </Card>
+            <Card className="p-4">
+              <p className="flex items-center gap-2 text-xs font-medium text-zinc-500">
+                <Database className="size-4" />
+                进行中
+              </p>
+              <strong className="mt-2 block text-lg text-zinc-950">{runningCount} 场</strong>
+            </Card>
           </div>
-        </section>
+        </motion.section>
 
-        <section className="control-panel calendar-panel">
-          <div className="calendar-filters">
-            <div className="filter-line">
-              <span className="control-group__label">游戏</span>
-              <div className="segmented-control">
-                {GAME_FILTER_OPTIONS.map((option) => (
-                  <button
-                    className={filters.game === option.value ? "segmented-control__button is-active" : "segmented-control__button"}
-                    key={option.value}
-                    onClick={() => updateGame(option.value)}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="filter-line">
-              <span className="control-group__label">赛区</span>
-              <div className="segmented-control">
-                {regionOptions.map((option) => (
-                  <button
-                    className={filters.region === option.value ? "segmented-control__button is-active" : "segmented-control__button"}
-                    key={option.label}
-                    onClick={() => updateField("region", option.value)}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="filter-line filter-line--split">
-              <div>
-                <span className="control-group__label">赛事级别</span>
-                <div className="segmented-control">
-                  {TIER_FILTER_OPTIONS.map((option) => (
-                    <button
-                      className={
-                        option.value === "all"
-                          ? filters.tier === "all" ? "segmented-control__button is-active" : "segmented-control__button"
-                          : selectedTiers.includes(option.value) ? "segmented-control__button is-active" : "segmented-control__button"
-                      }
-                      key={option.value}
-                      onClick={() => updateTier(option.value)}
-                      type="button"
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <span className="control-group__label">状态</span>
-                <div className="segmented-control">
-                  {MATCH_STATUS_FILTER_OPTIONS.map((option) => (
-                    <button
-                      className={filters.status === option.value ? "segmented-control__button is-active" : "segmented-control__button"}
-                      key={option.value}
-                      onClick={() => updateField("status", option.value)}
-                      type="button"
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+        <Card className="space-y-5 p-4 sm:p-5">
+          <div className="grid gap-4 xl:grid-cols-2">
+            <FilterTabs label="游戏" onChange={updateGame} options={GAME_FILTER_OPTIONS} value={filters.game} />
+            <FilterTabs label="赛区" onChange={(value) => updateField("region", value)} options={regionOptions} value={filters.region} />
           </div>
 
-          <div className="week-calendar">
-            <button className="week-calendar__arrow" onClick={() => moveWeek(-7)} type="button" aria-label="上一周">
-              ‹
-            </button>
-
-            <div className="week-calendar__days">
-              {weekDates.map((date) => {
-                const day = new Date(`${date}T00:00:00.000Z`);
-                const weekday = WEEKDAY_LABELS[day.getUTCDay()];
-                const dayLabel = date.slice(5).replace("-", ".");
-                const isSelected = filters.from === date;
-
-                return (
-                  <button
-                    className={isSelected ? "day-button is-active" : "day-button"}
-                    key={date}
-                    onClick={() => updateSelectedDate(date)}
-                    type="button"
-                  >
-                    <strong>{dayLabel}</strong>
-                    <span>{date === today ? "今天" : weekday}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <button className="week-calendar__arrow" onClick={() => moveWeek(7)} type="button" aria-label="下一周">
-              ›
-            </button>
-
-            <div className="calendar-picker-control">
-              <button
-                className={isCalendarOpen ? "calendar-picker-trigger is-active" : "calendar-picker-trigger"}
-                onClick={() => setIsCalendarOpen((current) => !current)}
-                type="button"
-              >
-                <span aria-hidden="true">▣</span>
-                选择日期
-              </button>
-            </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <FilterTabs
+              isSelected={(value) => (value === "all" ? filters.tier === "all" : selectedTiers.includes(value as MatchTier))}
+              label="赛事级别"
+              multiSelect
+              onChange={(value) => updateTier(value as "all" | MatchTier)}
+              options={TIER_FILTER_OPTIONS}
+              value={filters.tier}
+            />
+            <FilterTabs
+              label="状态"
+              onChange={(value) => updateField("status", value)}
+              options={MATCH_STATUS_FILTER_OPTIONS}
+              value={filters.status}
+            />
           </div>
 
-          <div className="control-actions">
-            <button className="secondary-button" onClick={handleReset} type="button">
-              重置
-            </button>
-            <div className="control-caption">
-              <span>默认显示今天 · 全部游戏 · 全部赛区 · PandaScore S级/A级 · 全部比赛。</span>
+          <div className="border-t border-zinc-200 pt-5">
+            <WeekStrip
+              dates={weekDates}
+              isCalendarOpen={isCalendarOpen}
+              onMoveWeek={moveWeek}
+              onOpenCalendar={() => setIsCalendarOpen((current) => !current)}
+              onSelectDate={updateSelectedDate}
+              selectedDate={filters.from}
+              today={today}
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 pt-4">
+            <p className="text-sm text-zinc-600">
+              {currentGameLabel} · {selectedRegionLabel} · {selectedTierLabel} · {currentStateLabel}
+            </p>
+            <div className="flex gap-2">
+              <Button onClick={handleReset} type="button" variant="outline">
+                <RotateCcw className="size-4" />
+                重置
+              </Button>
+              <Button disabled={loading} onClick={refresh} type="button">
+                <RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} />
+                刷新
+              </Button>
             </div>
           </div>
-        </section>
+        </Card>
 
-        {statusMessage ? <div className="status-banner">{statusMessage}</div> : null}
+        {statusMessage ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{statusMessage}</div>
+        ) : null}
 
         {!loading && !error && data ? (
-          <div className="status-banner status-banner--subtle">
+          <div className="rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 text-sm text-zinc-600">
             {source === "mock"
               ? "当前显示本地 mock 数据，配置 PandaScore token 后会自动切换到真实赛程。"
-              : `当前显示实时赛程数据，已载入 ${totalLabel}。`}
+              : `当前显示实时赛程数据，已载入 ${data.total} 场比赛。`}
           </div>
         ) : null}
 
-        <section className="content-panel">
+        {!loading && !error && data && data.matches.length > 0 ? <FeaturedMatches matches={data.matches} title={featuredTitle} /> : null}
+
+        <section className="space-y-3">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Match List</p>
+              <h2 className="text-xl font-semibold tracking-tight text-zinc-950">全部赛事</h2>
+            </div>
+            <Badge tone="neutral">{totalLabel}</Badge>
+          </div>
+
           {loading ? <LoadingState /> : null}
-
           {!loading && error ? <ErrorState message={error.message} onRetry={refresh} /> : null}
-
           {!loading && !error && data && data.matches.length > 0 ? <MatchList matches={data.matches} /> : null}
-
           {!loading && !error && data && data.matches.length === 0 ? <EmptyState message={getEmptyStateMessage(filters)} /> : null}
         </section>
 
-        <footer className="footer-panel">
-          <div>
-            <p className="footer-panel__label">数据来源</p>
-            <p className="footer-panel__copy">PandaScore API · 时区 {BEIJING_TIME_ZONE}</p>
-          </div>
-
-          <div>
-            <p className="footer-panel__label">最近更新时间</p>
-            <p className="footer-panel__copy">{data?.updatedAt ? formatUpdatedAt(data.updatedAt) : "等待首次加载"}</p>
-          </div>
+        <footer className="flex flex-col justify-between gap-2 border-t border-zinc-200 py-5 text-sm text-zinc-500 sm:flex-row">
+          <span>PandaScore API · 时区 {BEIJING_TIME_ZONE}</span>
+          <span>最近更新时间：{data?.updatedAt ? formatUpdatedAt(data.updatedAt) : "等待首次加载"}</span>
         </footer>
       </main>
 

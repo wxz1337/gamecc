@@ -11,6 +11,23 @@ const TBD_TEAM: Team = {
   location: null
 };
 
+const VALORANT_STREAM_URL =
+  "https://live.bilibili.com/24160384?live_from=81011&spm_id_from=333.1007.top_right_bar_window_history.content.click";
+const LOL_STREAM_URL =
+  "https://live.bilibili.com/7777?live_from=81011&spm_id_from=333.337.top_right_bar_window_history.content.click";
+
+function mapStreamUrl(rawMatch: PandaScoreMatch, game: GameType): string | null {
+  if (game === "valorant") {
+    return VALORANT_STREAM_URL;
+  }
+
+  if (game === "lol") {
+    return LOL_STREAM_URL;
+  }
+
+  return rawMatch.streams_list?.[0]?.raw_url ?? null;
+}
+
 function mapStatus(status: string | null | undefined): MatchStatus {
   const normalizedStatus = status?.toLowerCase();
 
@@ -156,7 +173,7 @@ export function mapPandaScoreMatch(rawMatch: PandaScoreMatch, game: GameType): M
         winnerTeamId: singleGame.winner?.id == null ? null : String(singleGame.winner.id)
       })) ?? [],
     teams,
-    streamUrl: rawMatch.streams_list?.[0]?.raw_url ?? null,
+    streamUrl: mapStreamUrl(rawMatch, game),
     replayUrl: rawMatch.replay_url ?? null,
     serie: rawMatch.serie?.full_name?.trim() || rawMatch.serie?.name?.trim() || null,
     stage: rawMatch.tournament?.type?.trim() || rawMatch.serie?.name?.trim() || null,
