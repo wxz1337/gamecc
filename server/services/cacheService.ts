@@ -25,6 +25,38 @@ function normalizeKeyPart(value: string | undefined): string {
   return value?.trim().toLowerCase() || "all";
 }
 
+export function buildResponseCacheKey(query: MatchQuery): string {
+  return [
+    "matches-response:v3",
+    query.from,
+    query.to,
+    query.view,
+    query.game,
+    query.status,
+    query.tier,
+    normalizeKeyPart(query.region),
+    query.sort,
+    normalizeKeyPart(query.query),
+    normalizeKeyPart(query.league),
+    normalizeKeyPart(query.team),
+    normalizeKeyPart(query.stage)
+  ].join(":");
+}
+
+export function buildSourceWindowCacheKey(
+  query: Pick<MatchQuery, "from" | "to" | "game"> & {
+    statusGroup: string;
+  }
+): string {
+  return [
+    "source-window:v1",
+    query.game,
+    query.from,
+    query.to,
+    normalizeKeyPart(query.statusGroup)
+  ].join(":");
+}
+
 export function buildCacheKey(query: MatchQuery | string, game?: string): string {
   if (typeof query === "string") {
     return `matches:${query}:${game ?? "all"}`;

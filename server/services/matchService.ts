@@ -1,4 +1,5 @@
 import { addBeijingDays, formatBeijingDateTime, getBeijingDateRangeUtc } from "../../shared/date.js";
+import { ERROR_CODES, isAppError } from "../../shared/errors.js";
 import {
   GameFilter,
   GameType,
@@ -11,10 +12,14 @@ import {
   MatchStatusFilter,
   MatchesResponse
 } from "../../shared/match.js";
-import { isAppError } from "../../shared/errors.js";
 import { mapPandaScoreMatch } from "../mappers/pandascoreMapper.js";
 import { PandaScoreMatch } from "../types/pandascore.js";
-import { buildCacheKey, getAny, getFresh, set } from "./cacheService.js";
+import { buildResponseCacheKey, buildSourceWindowCacheKey, getAny, getFresh, set } from "./cacheService.js";
+import { createSyncRun, finishSyncRunFailure, finishSyncRunSuccess } from "../repositories/syncRunRepository.js";
+import { getFreshWindow, upsertFailedWindow, upsertSuccessWindow } from "../repositories/syncWindowRepository.js";
+import { queryMatchesByDateRange, upsertMatches } from "../repositories/matchRepository.js";
+import { isSupabaseConfigured } from "./supabaseClient.js";
+import { runWithInFlightDeduplication } from "./inFlightRequestService.js";
 import { fetchPandaScoreMatches } from "./pandascoreClient.js";
 
 const GAME_LABELS: Record<GameType, string> = {
@@ -68,12 +73,14 @@ type MatchTemplate = {
 
 type FetchMatchGroup = {
   game: GameType;
-  matches: PandaScoreMatch[];
+  matches: Match[];
 };
 
-type FetchMatchGroupsResult = {
-  groups: FetchMatchGroup[];
-  warnings: NonNullable<MatchesResponse["warnings"]>;
+type GameWindowResolution = {
+  game: GameType;
+  matches: Match[];
+  stale: boolean;
+  warning?: NonNullable<MatchesResponse["warnings"]>[number];
 };
 
 const MOCK_MATCH_TEMPLATES: MatchTemplate[] = [
@@ -331,6 +338,14 @@ function getPandaScoreStatuses(query: MatchQuery): MatchStatus[] | undefined {
   return [query.status];
 }
 
+function getStatusGroup(query: MatchQuery): string {
+  if (query.status === "all") {
+    return "all";
+  }
+
+  return `${query.view}_${query.status}`;
+}
+
 function applyFilters(matches: Match[], query: MatchQuery): Match[] {
   return matches.filter((match) => matchesSearch(match, query));
 }
@@ -339,7 +354,8 @@ function createResponse(
   query: MatchQuery,
   matches: Match[],
   facets: MatchFacets,
-  warnings: NonNullable<MatchesResponse["warnings"]> = []
+  warnings: NonNullable<MatchesResponse["warnings"]> = [],
+  stale = false
 ): MatchesResponse {
   return {
     date: query.date,
@@ -360,7 +376,7 @@ function createResponse(
       stage: query.stage
     },
     sort: query.sort,
-    stale: false,
+    stale,
     updatedAt: new Date().toISOString(),
     total: matches.length,
     facets,
@@ -371,57 +387,171 @@ function createResponse(
   };
 }
 
-async function fetchMatchGroupsWithQuery(
-  query: MatchQuery,
-  gamesToFetch: GameType[],
-  range: ReturnType<typeof getBeijingDateRangeUtc>
-): Promise<FetchMatchGroupsResult> {
-  const pandaScoreStatuses = getPandaScoreStatuses(query);
+function buildGameWarning(game: GameType, error: unknown): NonNullable<MatchesResponse["warnings"]>[number] {
+  return {
+    code: isAppError(error) ? error.code : "PANDASCORE_REQUEST_FAILED",
+    message: `${GAME_LABELS[game]} 赛程数据暂时获取失败。`,
+    game
+  };
+}
 
-  if (gamesToFetch.length === 1) {
-    const game = gamesToFetch[0];
-    return {
-      groups: [
-        {
-          game,
-          matches: await fetchPandaScoreMatches(game, range, { statuses: pandaScoreStatuses })
-        }
-      ],
-      warnings: []
-    };
+function getSourceWindowTtlSeconds(): number {
+  const rawValue = Number(process.env.SOURCE_WINDOW_TTL_SECONDS ?? 900);
+
+  if (!Number.isFinite(rawValue) || rawValue <= 0) {
+    return 900;
   }
 
-  const settledResults = await Promise.allSettled(
-    gamesToFetch.map((game) => fetchPandaScoreMatches(game, range, { statuses: pandaScoreStatuses }))
-  );
-  const groups: FetchMatchGroup[] = [];
-  const warnings: NonNullable<MatchesResponse["warnings"]> = [];
-  let firstError: unknown = null;
+  return Math.trunc(rawValue);
+}
 
-  settledResults.forEach((result, index) => {
-    const game = gamesToFetch[index];
+function mapRawMatches(game: GameType, rawMatches: PandaScoreMatch[]): Match[] {
+  return rawMatches.map((match) => mapPandaScoreMatch(match, game));
+}
 
-    if (result.status === "fulfilled") {
-      groups.push({
+async function fetchDirectGameMatches(
+  query: MatchQuery,
+  game: GameType,
+  range: ReturnType<typeof getBeijingDateRangeUtc>
+): Promise<GameWindowResolution> {
+  const pandaScoreStatuses = getPandaScoreStatuses(query);
+  const rawMatches = await fetchPandaScoreMatches(game, range, { statuses: pandaScoreStatuses });
+
+  return {
+    game,
+    matches: mapRawMatches(game, rawMatches),
+    stale: false
+  };
+}
+
+async function resolveGameWithSupabase(
+  query: MatchQuery,
+  game: GameType,
+  range: ReturnType<typeof getBeijingDateRangeUtc>
+): Promise<GameWindowResolution> {
+  try {
+    const pandaScoreStatuses = getPandaScoreStatuses(query);
+    const statusGroup = getStatusGroup(query);
+    const fromDate = query.from;
+    const toDate = query.to;
+
+    if (!query.refresh) {
+      const freshWindow = await getFreshWindow({
+        source: "pandascore",
         game,
-        matches: result.value
+        from_date: fromDate,
+        to_date: toDate,
+        status_group: statusGroup
       });
-      return;
+
+      if (freshWindow) {
+        const matches = await queryMatchesByDateRange({
+          source: "pandascore",
+          game,
+          fromDate,
+          toDate,
+          statuses: pandaScoreStatuses
+        });
+
+        return {
+          game,
+          matches,
+          stale: false
+        };
+      }
     }
 
-    firstError ??= result.reason;
-    warnings.push({
-      code: isAppError(result.reason) ? result.reason.code : "PANDASCORE_REQUEST_FAILED",
-      message: `${GAME_LABELS[game]} 赛程数据暂时获取失败。`,
-      game
+    const sourceWindowKey = buildSourceWindowCacheKey({
+      game,
+      from: fromDate,
+      to: toDate,
+      statusGroup
     });
-  });
 
-  if (groups.length === 0) {
-    throw firstError;
+    return await runWithInFlightDeduplication(sourceWindowKey, async () => {
+      const syncRun = await createSyncRun({
+        source: "pandascore",
+        game,
+        from_date: fromDate,
+        to_date: toDate,
+        status_group: statusGroup
+      });
+
+      try {
+        const rawMatches = await fetchPandaScoreMatches(game, range, { statuses: pandaScoreStatuses });
+        const matches = mapRawMatches(game, rawMatches);
+
+        await upsertMatches(matches);
+        await upsertSuccessWindow({
+          source: "pandascore",
+          game,
+          from_date: fromDate,
+          to_date: toDate,
+          status_group: statusGroup,
+          ttlSeconds: getSourceWindowTtlSeconds()
+        });
+        await finishSyncRunSuccess({
+          id: syncRun.id,
+          fetchedCount: rawMatches.length,
+          upsertedCount: matches.length
+        });
+
+        return {
+          game,
+          matches,
+          stale: false
+        };
+      } catch (error) {
+        await Promise.allSettled([
+          finishSyncRunFailure({
+            id: syncRun.id,
+            errorCode: isAppError(error) ? error.code : "PANDASCORE_REQUEST_FAILED",
+            errorMessage: error instanceof Error ? error.message : "赛程数据暂时获取失败，请稍后重试。"
+          }),
+          upsertFailedWindow({
+            source: "pandascore",
+            game,
+            from_date: fromDate,
+            to_date: toDate,
+            status_group: statusGroup,
+            errorCode: isAppError(error) ? error.code : "PANDASCORE_REQUEST_FAILED",
+            errorMessage: error instanceof Error ? error.message : "赛程数据暂时获取失败，请稍后重试。"
+          })
+        ]);
+
+        try {
+          const staleMatches = await queryMatchesByDateRange({
+            source: "pandascore",
+            game,
+            fromDate,
+            toDate,
+            statuses: pandaScoreStatuses
+          });
+
+          if (staleMatches.length > 0) {
+            return {
+              game,
+              matches: staleMatches,
+              stale: true,
+              warning: buildGameWarning(game, error)
+            };
+          }
+        } catch (staleError) {
+          if (!isAppError(staleError) || staleError.code !== ERROR_CODES.SUPABASE_SCHEMA_NOT_READY) {
+            throw staleError;
+          }
+        }
+
+        throw error;
+      }
+    });
+  } catch (error) {
+    if (isAppError(error) && error.code === ERROR_CODES.SUPABASE_SCHEMA_NOT_READY) {
+      return fetchDirectGameMatches(query, game, range);
+    }
+
+    throw error;
   }
-
-  return { groups, warnings };
 }
 
 function buildMockMatch(date: string, template: MatchTemplate): Match {
@@ -507,7 +637,7 @@ export function createMockMatchesResponse(date: string, game: GameFilter): Match
 }
 
 export async function getMatches(query: MatchQuery): Promise<MatchesResponse> {
-  const cacheKey = buildCacheKey(query);
+  const cacheKey = buildResponseCacheKey(query);
   const freshCachedResponse = query.refresh ? null : getFresh<MatchesResponse>(cacheKey);
 
   if (freshCachedResponse) {
@@ -517,13 +647,44 @@ export async function getMatches(query: MatchQuery): Promise<MatchesResponse> {
   try {
     const range = getBeijingDateRangeUtc(query.from, query.to);
     const gamesToFetch: GameType[] = query.game === "all" ? ["cs2", "valorant", "lol"] : [query.game];
-    const { groups, warnings } = await fetchMatchGroupsWithQuery(query, gamesToFetch, range);
-    const mappedMatches = sortByBeginAt(groups.flatMap((group) => {
-      return group.matches.map((match) => mapPandaScoreMatch(match, group.game));
-    }));
+    const useSupabase = isSupabaseConfigured();
+    const settledResults = await Promise.allSettled(
+      gamesToFetch.map((game) => (useSupabase ? resolveGameWithSupabase(query, game, range) : fetchDirectGameMatches(query, game, range)))
+    );
+    const groups: FetchMatchGroup[] = [];
+    const warnings: NonNullable<MatchesResponse["warnings"]> = [];
+    let firstError: unknown = null;
+    let stale = false;
+
+    settledResults.forEach((result, index) => {
+      const game = gamesToFetch[index];
+
+      if (result.status === "fulfilled") {
+        groups.push({
+          game,
+          matches: result.value.matches
+        });
+        stale = stale || result.value.stale;
+
+        if (result.value.warning) {
+          warnings.push(result.value.warning);
+        }
+
+        return;
+      }
+
+      firstError ??= result.reason;
+      warnings.push(buildGameWarning(game, result.reason));
+    });
+
+    if (groups.length === 0) {
+      throw firstError;
+    }
+
+    const mappedMatches = sortByBeginAt(groups.flatMap((group) => group.matches));
     const filteredMatches = applyFilters(mappedMatches, query);
     const facets = buildMatchFacets(mappedMatches);
-    const response = createResponse(query, sortMatches(filteredMatches, query.sort), facets, warnings);
+    const response = createResponse(query, sortMatches(filteredMatches, query.sort), facets, warnings, stale);
 
     if (!response.partial) {
       set(cacheKey, response);

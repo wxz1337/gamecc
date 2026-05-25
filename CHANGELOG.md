@@ -4,6 +4,43 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循轻量 SemVer。
 
+## [0.5.0] - 2026-05-26
+
+### Added
+
+- 新增 Supabase 持久化赛程缓存表：`matches`、`match_fetch_windows`、`sync_runs`。
+- 新增服务端 Supabase client 和 repository 层，用于持久化赛程、窗口状态和同步记录。
+- 新增 in-flight dedupe，避免相同源窗口并发重复拉取 PandaScore。
+- 新增源窗口 freshness 语义，支持 fresh 命中、stale fallback 和失败记录。
+- 新增前端周维度批量加载策略，首屏和日期切换都会加载到本周最后一天。
+- 新增 v0.5.0 规划文档。
+
+### Changed
+
+- `/api/matches` 的主流程接入 Supabase 持久化缓存，优先命中 fresh window，未命中时再回源 PandaScore。
+- 完整响应缓存 key 升级为 `matches-response:v3`。
+- 源窗口缓存 key 升级为 `source-window:v1`。
+- 前端时间线从“按天追加”改为“按周批量加载”，减少重复请求。
+- 项目版本号提升至 `0.5.0`。
+
+### Fixed
+
+- 修复重复窗口请求在高并发场景下可能重复打 PandaScore 的问题。
+- 修复单游戏回源失败时无法记录同步结果的问题。
+- 修复前端滚动追加在已加载到本周末后仍可能继续触发请求的问题。
+
+### Verified
+
+- `npm run typecheck` 通过。
+- `npm test` 通过。
+- `npm run build` 通过。
+
+### Known Gaps
+
+- 目前仅完成赛程缓存和加载性能优化，尚未引入收藏、提醒、订阅或个性化排序。
+- Supabase 远程迁移需要在部署环境中单独执行并验证。
+- 仍未加入浏览器自动化回归测试，复杂交互以本地人工点验为主。
+
 ## [0.4.0] - 2026-05-25
 
 ### Added

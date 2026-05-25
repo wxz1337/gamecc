@@ -4,6 +4,13 @@ import { ArrowUp, CalendarClock, Database, RefreshCw, RotateCcw, Sparkles, Troph
 import { BEIJING_TIME_ZONE, addBeijingDays, getBeijingTodayDate, getBeijingWeekDates, isValidDateString } from "../shared/date";
 import { MatchPageState, buildMatchPageSearchParams, parseMatchPageState, resetMatchPageState } from "./utils/matchPageState";
 import {
+  buildTimelineStateForDate,
+  getTimelineBounds,
+  getTimelineToDate,
+  normalizeTimelineState,
+  shouldLoadMoreTimeline
+} from "./utils/timelineRange";
+import {
   GAME_FILTER_OPTIONS,
   GAME_LABELS,
   MATCH_STATUS_FILTER_OPTIONS,
@@ -45,46 +52,6 @@ function formatTierLabel(tier: MatchPageState["tier"]): string {
   return selectedTiers.length > 0 ? selectedTiers.map((value) => `${value}级`).join(" / ") : "S级 / A级";
 }
 
-function getTimelineBounds(anchorDate: string) {
-  const weekDates = getBeijingWeekDates(anchorDate);
-
-  return {
-    from: anchorDate,
-    to: weekDates[6]
-  };
-}
-
-function clampDate(date: string, minDate: string, maxDate: string): string {
-  if (date < minDate) {
-    return minDate;
-  }
-
-  if (date > maxDate) {
-    return maxDate;
-  }
-
-  return date;
-}
-
-function normalizeTimelineState(state: MatchPageState, anchorDate: string): MatchPageState {
-  const bounds = getTimelineBounds(anchorDate);
-  const from = clampDate(state.from, bounds.from, bounds.to);
-  const to = clampDate(state.to, from, bounds.to);
-  const status = state.status === "finished" ? "finished" : "running";
-
-  return {
-    ...state,
-    from,
-    to,
-    status,
-    sort: "beginAt_asc"
-  };
-}
-
-function getInitialTimelineToDate(anchorDate: string): string {
-  return anchorDate;
-}
-
 function formatStatusFilterLabel(status: MatchPageState["status"]): string {
   if (status === "finished") {
     return STATUS_LABELS.finished;
@@ -105,13 +72,6 @@ function getInitialTimelineState(): MatchPageState {
     ...parsedState,
     status
   };
-
-  if (state.from === state.to) {
-    return normalizeTimelineState({
-      ...state,
-      to: getInitialTimelineToDate(state.from)
-    }, state.from);
-  }
 
   return normalizeTimelineState(state, state.from);
 }
@@ -282,13 +242,9 @@ function App() {
     setIsLoadingMore(false);
     setActiveDate(date);
     setTimelineAnchorDate(date);
-    const nextStatus = getStatusForDate(date, today);
     setFilters((current) => ({
       ...current,
-      from: date,
-      to: getInitialTimelineToDate(date),
-      status: nextStatus,
-      sort: "beginAt_asc"
+      ...buildTimelineStateForDate(date, today)
     }));
   };
 
@@ -302,7 +258,7 @@ function App() {
     setTimelineAnchorDate(today);
     setFilters({
       ...resetMatchPageState("schedule"),
-      to: getInitialTimelineToDate(today)
+      ...buildTimelineStateForDate(today, today)
     });
   };
 
@@ -314,7 +270,7 @@ function App() {
     setFilters((current) => ({
       ...current,
       from: activeDate,
-      to: getInitialTimelineToDate(activeDate),
+      to: getTimelineToDate(activeDate),
       status: nextStatus,
       sort: "beginAt_asc"
     }));
@@ -325,7 +281,15 @@ function App() {
   }, []);
 
   const loadFutureMatches = useCallback(() => {
-    if (loading || isLoadingMore || loadedTimelineTo >= timelineBounds.to || data == null) {
+    if (
+      !shouldLoadMoreTimeline({
+        loading,
+        isLoadingMore,
+        loadedTimelineTo,
+        timelineEnd: timelineBounds.to,
+        hasData: data != null
+      })
+    ) {
       return;
     }
 

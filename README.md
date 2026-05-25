@@ -4,8 +4,8 @@
 
 ## 当前版本
 
-- 版本：`0.4.0`
-- 状态：时间线赛程浏览版已完成
+- 版本：`0.5.0`
+- 状态：持久化赛程缓存与加载性能优化版已完成
 - 运行方式：本地开发服务，支持生产构建
 - 数据源：PandaScore API
 
@@ -23,7 +23,9 @@
 - 使用 Tailwind CSS、shadcn/ui 风格基础组件、lucide-react 和 framer-motion 重构 UI。
 - 首页提供当前日期、已载入赛事数、进行中赛事数和今日/当日重点赛事。
 - 通过后端代理请求 PandaScore，前端不暴露 token。
-- 支持内存缓存、手动刷新和 stale 兜底。
+- 支持内存响应缓存、Supabase 持久化窗口缓存、手动刷新和 stale 兜底。
+- 后端使用请求合并避免相同源窗口并发重复拉取 PandaScore。
+- 前端首屏与日期切换会批量加载到本周最后一天，减少按天重复请求。
 - 展示比赛时间、项目、赛事、队伍、状态和 BO 赛制。
 - 支持展开比赛详情，查看比分、胜者、来源、更新时间和小局摘要。
 - 页面 URL 会保留筛选条件，刷新后恢复当前查询。
@@ -59,11 +61,16 @@ PANDASCORE_API_TOKEN=your_api_token_here
 DEFAULT_TIMEZONE=Asia/Shanghai
 CACHE_TTL_SECONDS=900
 PANDASCORE_REQUEST_TIMEOUT_MS=8000
+PANDASCORE_REQUEST_RETRY_COUNT=1
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SOURCE_WINDOW_TTL_SECONDS=900
 PORT=3001
 VITE_API_BASE_URL=http://localhost:3001
 ```
 
 其中 `VITE_API_BASE_URL` 在本地开发时可以省略；`npm run dev` 会通过 Vite 代理访问后端。使用生产构建预览或静态部署时建议保留它。
+`SUPABASE_URL` 和 `SUPABASE_SERVICE_ROLE_KEY` 只用于服务端读取，前端不会直接访问 Supabase。
 
 4. 启动开发服务：
 
@@ -98,6 +105,26 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+## v0.5.0 说明
+
+- Supabase 迁移文件位于 `supabase/migrations/20260526_create_match_cache_tables.sql`。
+- 数据表用途：
+  - `matches`：持久化赛程主数据
+  - `match_fetch_windows`：记录窗口 freshness 和过期状态
+  - `sync_runs`：记录每次同步执行结果
+- 缓存策略：
+  - 完整响应继续使用服务端内存缓存
+  - 源窗口使用 Supabase 持久化缓存
+  - 同一源窗口并发请求通过 in-flight dedupe 合并
+- 请求减少策略：
+  - 后端优先命中 fresh window
+  - 前端默认批量加载到本周最后一天
+  - 滚动到周末后不再按天追加请求
+- 验证方式：
+  - `npm run typecheck`
+  - `npm test`
+  - `npm run build`
 
 ## 更新流程
 
