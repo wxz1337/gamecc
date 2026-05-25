@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AppError, ERROR_CODES } from "../../shared/errors.js";
 import { MatchQuery } from "../../shared/match.js";
 import { PandaScoreMatch } from "../types/pandascore.js";
 import { getMatches } from "./matchService.js";
@@ -153,6 +154,9 @@ describe("matchService", () => {
       expect.objectContaining({
         startUtc: expect.any(Date),
         endUtc: expect.any(Date)
+      }),
+      expect.objectContaining({
+        statuses: ["finished"]
       })
     );
   });
@@ -176,5 +180,72 @@ describe("matchService", () => {
     const response = await getMatches(buildQuery({ status: "all", tier: "S,A" }));
 
     expect(response.matches.map((match) => match.tournamentTier).sort()).toEqual(["A", "S"]);
+  });
+
+  it("keeps schedule queries on running status broad enough for not started matches", async () => {
+    mockedFetchPandaScoreMatches.mockResolvedValue([
+      buildRawMatch({
+        id: 1,
+        begin_at: "2026-05-02T12:00:00.000Z",
+        status: "running",
+        name: "Live Match"
+      }),
+      buildRawMatch({
+        id: 2,
+        begin_at: "2026-05-03T12:00:00.000Z",
+        status: "not_started",
+        name: "Upcoming Match"
+      }),
+      buildRawMatch({
+        id: 3,
+        begin_at: "2026-05-04T12:00:00.000Z",
+        status: "finished",
+        name: "Finished Match"
+      })
+    ]);
+
+    const response = await getMatches(buildQuery({ view: "schedule", status: "running", sort: "beginAt_asc" }));
+
+    expect(response.total).toBe(2);
+    expect(response.matches.map((match) => match.status).sort()).toEqual(["not_started", "running"]);
+  });
+
+  it("returns available games when one source fails for all-game queries", async () => {
+    mockedFetchPandaScoreMatches.mockImplementation(async (game) => {
+      if (game === "valorant") {
+        throw new AppError(ERROR_CODES.PANDASCORE_TIMEOUT, "赛程数据请求超时，请稍后重试。", 504);
+      }
+
+      return [
+        buildRawMatch({
+          id: game === "cs2" ? 10 : 20,
+          name: `${game} match`,
+          league: game === "cs2" ? "ESL" : "LPL"
+        })
+      ];
+    });
+
+    const response = await getMatches(buildQuery({ game: "all", status: "all", sort: "beginAt_asc" }));
+
+    expect(response.partial).toBe(true);
+    expect(response.total).toBe(2);
+    expect(response.matches.map((match) => match.game).sort()).toEqual(["cs2", "lol"]);
+    expect(response.warnings).toEqual([
+      {
+        code: ERROR_CODES.PANDASCORE_TIMEOUT,
+        message: "VALORANT 赛程数据暂时获取失败。",
+        game: "valorant"
+      }
+    ]);
+  });
+
+  it("keeps single-game queries strict when the selected source fails", async () => {
+    mockedFetchPandaScoreMatches.mockRejectedValue(
+      new AppError(ERROR_CODES.PANDASCORE_TIMEOUT, "赛程数据请求超时，请稍后重试。", 504)
+    );
+
+    await expect(getMatches(buildQuery({ game: "lol" }))).rejects.toMatchObject({
+      code: ERROR_CODES.PANDASCORE_TIMEOUT
+    });
   });
 });

@@ -49,6 +49,10 @@ button {
   display: none;
 }
 
+.timeline-list {
+  overflow-anchor: auto;
+}
+
 .match-calendar-panel {
   position: fixed;
   top: 72px;

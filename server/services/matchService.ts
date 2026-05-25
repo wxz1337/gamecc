@@ -11,6 +11,7 @@ import {
   MatchStatusFilter,
   MatchesResponse
 } from "../../shared/match.js";
+import { isAppError } from "../../shared/errors.js";
 import { mapPandaScoreMatch } from "../mappers/pandascoreMapper.js";
 import { PandaScoreMatch } from "../types/pandascore.js";
 import { buildCacheKey, getAny, getFresh, set } from "./cacheService.js";
@@ -63,6 +64,16 @@ type MatchTemplate = {
   status: MatchStatus;
   bestOf: number;
   teams: Match["teams"];
+};
+
+type FetchMatchGroup = {
+  game: GameType;
+  matches: PandaScoreMatch[];
+};
+
+type FetchMatchGroupsResult = {
+  groups: FetchMatchGroup[];
+  warnings: NonNullable<MatchesResponse["warnings"]>;
 };
 
 const MOCK_MATCH_TEMPLATES: MatchTemplate[] = [
@@ -155,6 +166,18 @@ function matchesTier(match: Match, tier: MatchQuery["tier"]): boolean {
   return matchTier != null && matchTier !== "" && tier.split(",").includes(matchTier);
 }
 
+function matchesStatus(match: Match, query: MatchQuery): boolean {
+  if (query.status === "all") {
+    return true;
+  }
+
+  if (query.view === "schedule" && query.status === "running") {
+    return match.status === "running" || match.status === "not_started";
+  }
+
+  return match.status === query.status;
+}
+
 function matchesSearch(match: Match, query: MatchQuery): boolean {
   if (query.query) {
     const needle = normalizeText(query.query);
@@ -198,7 +221,7 @@ function matchesSearch(match: Match, query: MatchQuery): boolean {
     }
   }
 
-  if (query.status !== "all" && match.status !== query.status) {
+  if (!matchesStatus(match, query)) {
     return false;
   }
 
@@ -296,11 +319,28 @@ function buildMatchFacets(matches: Match[]): MatchFacets {
   };
 }
 
+function getPandaScoreStatuses(query: MatchQuery): MatchStatus[] | undefined {
+  if (query.status === "all") {
+    return undefined;
+  }
+
+  if (query.view === "schedule" && query.status === "running") {
+    return ["not_started", "running"];
+  }
+
+  return [query.status];
+}
+
 function applyFilters(matches: Match[], query: MatchQuery): Match[] {
   return matches.filter((match) => matchesSearch(match, query));
 }
 
-function createResponse(query: MatchQuery, matches: Match[], facets: MatchFacets): MatchesResponse {
+function createResponse(
+  query: MatchQuery,
+  matches: Match[],
+  facets: MatchFacets,
+  warnings: NonNullable<MatchesResponse["warnings"]> = []
+): MatchesResponse {
   return {
     date: query.date,
     from: query.from,
@@ -325,8 +365,63 @@ function createResponse(query: MatchQuery, matches: Match[], facets: MatchFacets
     total: matches.length,
     facets,
     game: query.game,
+    partial: warnings.length > 0,
+    warnings: warnings.length > 0 ? warnings : undefined,
     matches
   };
+}
+
+async function fetchMatchGroupsWithQuery(
+  query: MatchQuery,
+  gamesToFetch: GameType[],
+  range: ReturnType<typeof getBeijingDateRangeUtc>
+): Promise<FetchMatchGroupsResult> {
+  const pandaScoreStatuses = getPandaScoreStatuses(query);
+
+  if (gamesToFetch.length === 1) {
+    const game = gamesToFetch[0];
+    return {
+      groups: [
+        {
+          game,
+          matches: await fetchPandaScoreMatches(game, range, { statuses: pandaScoreStatuses })
+        }
+      ],
+      warnings: []
+    };
+  }
+
+  const settledResults = await Promise.allSettled(
+    gamesToFetch.map((game) => fetchPandaScoreMatches(game, range, { statuses: pandaScoreStatuses }))
+  );
+  const groups: FetchMatchGroup[] = [];
+  const warnings: NonNullable<MatchesResponse["warnings"]> = [];
+  let firstError: unknown = null;
+
+  settledResults.forEach((result, index) => {
+    const game = gamesToFetch[index];
+
+    if (result.status === "fulfilled") {
+      groups.push({
+        game,
+        matches: result.value
+      });
+      return;
+    }
+
+    firstError ??= result.reason;
+    warnings.push({
+      code: isAppError(result.reason) ? result.reason.code : "PANDASCORE_REQUEST_FAILED",
+      message: `${GAME_LABELS[game]} 赛程数据暂时获取失败。`,
+      game
+    });
+  });
+
+  if (groups.length === 0) {
+    throw firstError;
+  }
+
+  return { groups, warnings };
 }
 
 function buildMockMatch(date: string, template: MatchTemplate): Match {
@@ -422,17 +517,17 @@ export async function getMatches(query: MatchQuery): Promise<MatchesResponse> {
   try {
     const range = getBeijingDateRangeUtc(query.from, query.to);
     const gamesToFetch: GameType[] = query.game === "all" ? ["cs2", "valorant", "lol"] : [query.game];
-    const matchGroups = await Promise.all(gamesToFetch.map((game) => fetchPandaScoreMatches(game, range)));
-    const mappedMatches = sortByBeginAt(matchGroups.flatMap((group, index) => {
-      const game = gamesToFetch[index];
-
-      return group.map((match) => mapPandaScoreMatch(match, game));
+    const { groups, warnings } = await fetchMatchGroupsWithQuery(query, gamesToFetch, range);
+    const mappedMatches = sortByBeginAt(groups.flatMap((group) => {
+      return group.matches.map((match) => mapPandaScoreMatch(match, group.game));
     }));
     const filteredMatches = applyFilters(mappedMatches, query);
     const facets = buildMatchFacets(mappedMatches);
-    const response = createResponse(query, sortMatches(filteredMatches, query.sort), facets);
+    const response = createResponse(query, sortMatches(filteredMatches, query.sort), facets, warnings);
 
-    set(cacheKey, response);
+    if (!response.partial) {
+      set(cacheKey, response);
+    }
 
     return response;
   } catch (error) {

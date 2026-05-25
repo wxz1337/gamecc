@@ -26,7 +26,7 @@ function getViewDefaults(view: MatchView) {
   return {
     from: today,
     to: today,
-    status: "all" as const,
+    status: "running" as const,
     sort: "beginAt_asc" as const
   };
 }
@@ -69,6 +69,8 @@ export function resetMatchPageState(view: MatchView = "schedule"): MatchPageStat
 
 export function parseMatchPageState(search: string): MatchPageState {
   const params = new URLSearchParams(search);
+  const viewFromParams = params.get("view");
+  const defaults = getViewDefaults(viewFromParams === "results" ? "results" : "schedule");
 
   try {
     const parsed = parseMatchQueryParams({
@@ -94,7 +96,7 @@ export function parseMatchPageState(search: string): MatchPageState {
       from: parsed.from,
       to: parsed.to,
       game: parsed.game,
-      status: parsed.status,
+      status: params.has("status") ? parsed.status : defaults.status,
       tier: parsed.tier,
       query: parsed.query ?? "",
       league: parsed.league ?? "",

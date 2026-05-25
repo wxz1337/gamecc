@@ -1,13 +1,13 @@
 {
   "name": "esports-schedule-aggregator",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:lan": "concurrently \"npm:dev:server\" \"npm:dev:client:lan\"",
-    "dev:client": "vite",
-    "dev:client:lan": "vite --host 0.0.0.0",
+    "dev": "concurrently --kill-others-on-fail \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:lan": "concurrently --kill-others-on-fail \"npm:dev:server\" \"npm:dev:client:lan\"",
+    "dev:client": "wait-on tcp:127.0.0.1:3001 && vite",
+    "dev:client:lan": "wait-on tcp:127.0.0.1:3001 && vite --host 0.0.0.0",
     "dev:server": "tsx watch server/index.ts",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
@@ -41,6 +41,7 @@
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
-    "vitest": "^3.1.4"
+    "vitest": "^3.1.4",
+    "wait-on": "^9.0.10"
   }
 }

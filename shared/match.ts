@@ -136,5 +136,11 @@ export type MatchesResponse = {
   total: number;
   facets: MatchFacets;
   game: GameFilter;
+  partial?: boolean;
+  warnings?: Array<{
+    code: string;
+    message: string;
+    game?: GameType;
+  }>;
   matches: Match[];
 };

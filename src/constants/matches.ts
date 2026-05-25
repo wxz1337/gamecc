@@ -50,9 +50,7 @@ export const TIER_FILTER_OPTIONS: Array<{ label: string; value: "all" | MatchTie
 ];
 
 export const MATCH_STATUS_FILTER_OPTIONS: Array<{ label: string; value: MatchStatusFilter }> = [
-  { label: "全部比赛", value: "all" },
-  { label: "未开始", value: "not_started" },
-  { label: "进行中", value: "running" },
+  { label: "进行中&未开始", value: "running" },
   { label: "已结束", value: "finished" }
 ];
 
