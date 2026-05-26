@@ -1,18 +1,18 @@
 # Project Status
 
-更新时间：2026-05-26
+更新时间：2026-05-27
 
 ## 总体判断
 
-当前项目已完成 `0.5.0` 持久化赛程缓存与加载性能优化版。它在保留游戏、赛区、级别、状态筛选和 API 结构的前提下，加入了 Supabase 持久化缓存、服务端请求合并和前端批量加载。
+当前项目已完成 `0.6.0` Supabase 使用优化版。它在 `0.5.0` 持久化缓存基础上，补强了 Supabase 类型边界、查询字段投影、批量写入稳定性、数据库索引和更新时间维护。
 
 从当前定位看：
 
 - 个人使用可用性：完成
-- `0.5.0` 持久化缓存与加载性能优化目标：完成
+- `0.6.0` Supabase 使用优化目标：完成
 - 重大 bug 风险：未发现
 - 后续重点：规划收藏关注、提醒、日历订阅或个人偏好排序
-- 后续重点：进一步细化窗口过期策略、同步监控和索引优化
+- 后续重点：观察 Supabase freshness、写入与查询表现，必要时细化同步监控
 
 ## 当前能力
 
@@ -68,6 +68,9 @@
   - `match_fetch_windows`
   - `sync_runs`
 - 支持源窗口 freshness 检查、in-flight dedupe 和 stale fallback。
+- Supabase client 已绑定服务端 schema 类型。
+- Supabase repository 使用显式字段投影，避免 `select("*")`。
+- `matches` 批量 upsert 已按固定大小分片。
 
 ### 数据与缓存
 
@@ -75,6 +78,7 @@
 - 源窗口 key 使用 `source-window:v1`。
 - Supabase 未配置时自动回退到现有 PandaScore + 内存缓存路径。
 - 前端批量加载将首屏和日期切换请求范围扩展到本周最后一天，降低按天请求次数。
+- Supabase 迁移已补充贴合查询路径的复合索引，并由数据库 trigger 自动维护缓存表 `updated_at`。
 
 ### 数据
 
@@ -112,7 +116,7 @@ npm run build
 - 测试通过：包含 API 集成、日期工具、参数校验、缓存服务、PandaScore mapper、Supabase repository、in-flight dedupe、timeline helper 和范围筛选业务测试。
 - 生产构建通过。
 - 轻量人工验收清单见 [frontend-acceptance-checklist.md](./frontend-acceptance-checklist.md)。
-- v0.5.0 持久化缓存与加载性能优化版已通过类型检查、测试和生产构建。
+- v0.6.0 Supabase 使用优化版已通过类型检查、测试和生产构建。
 
 ## 已知取舍
 
@@ -120,11 +124,12 @@ npm run build
 - 未做前端浏览器自动化回归测试，个人使用场景下以手动点验为主。
 - PandaScore 免费接口字段偶尔不完整，页面以可选字段方式展示。
 - Supabase 依赖需要在部署环境中正确配置服务端环境变量。
+- v0.6.0 Supabase 索引与 trigger 迁移已执行并验证，remote migration history 已与本地 `20260526`、`20260527` 对齐。
 - `.env.local` 本地存在真实 token 时必须继续保持忽略。
 
 ## 建议下一步
 
-1. 保留当前状态作为 `0.5.0` 基线。
+1. 保留当前状态作为 `0.6.0` 基线。
 2. 用真实 PandaScore token 持续点验几个常用筛选组合。
 3. 在手机宽度下看一遍日期切换、筛选、详情展开。
-4. 观察 Supabase 窗口 freshness 与同步记录表现，必要时再优化过期策略或索引。
+4. 继续观察 Supabase freshness、写入和查询表现，必要时增加同步监控。

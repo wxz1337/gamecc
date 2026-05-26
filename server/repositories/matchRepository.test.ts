@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { Match } from "../../shared/match.js";
-import { mapMatchToRow, mapRowToMatch } from "./matchRepository.js";
+import { chunkMatchRows, mapMatchToRow, mapRowToMatch } from "./matchRepository.js";
 
 describe("matchRepository", () => {
   const originalEnv = { ...process.env };
@@ -176,5 +176,46 @@ describe("matchRepository", () => {
     expect(roundTrip.originalScheduledAt).toBeNull();
     expect(roundTrip.updatedAt).toBe("2026-05-23T12:30:00.000Z");
   });
-});
 
+  it("chunks match upserts to keep Supabase writes bounded", () => {
+    const rows = Array.from({ length: 5 }, (_, index) => ({
+      source: "pandascore",
+      game: "lol" as const,
+      provider_match_id: `match-${index}`,
+      name: `Match ${index}`,
+      begin_at: "2026-05-23T12:00:00.000Z",
+      end_at: null,
+      display_date: "2026-05-23",
+      status: "finished" as const,
+      league: "LPL",
+      league_image_url: null,
+      tournament: "LPL Spring",
+      tournament_type: null,
+      tournament_country: null,
+      tournament_region: null,
+      tournament_tier: null,
+      tournament_prizepool: null,
+      has_bracket: null,
+      best_of: null,
+      match_type: null,
+      rescheduled: null,
+      detailed_stats_available: null,
+      draw: null,
+      forfeit: null,
+      winner_team_id: null,
+      winner_name: null,
+      teams: [],
+      score: [],
+      games: [],
+      stream_url: null,
+      replay_url: null,
+      serie: null,
+      stage: null,
+      raw_payload: null,
+      provider_updated_at: null
+    }));
+
+    expect(chunkMatchRows(rows, 2).map((chunk) => chunk.length)).toEqual([2, 2, 1]);
+    expect(chunkMatchRows(rows, 0).map((chunk) => chunk.length)).toEqual([5]);
+  });
+});

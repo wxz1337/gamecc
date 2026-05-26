@@ -1,51 +1,10 @@
 import { formatBeijingDateTime } from "../../shared/date.js";
-import { AppError, ERROR_CODES } from "../../shared/errors.js";
 import type { GameFilter, GameType, Match, MatchGame, MatchScore, Team } from "../../shared/match.js";
-import { getSupabaseClient, isSupabaseConfigured } from "../services/supabaseClient.js";
+import type { Database, Json } from "../types/supabase.js";
+import { getSupabaseOrThrow } from "./supabaseRepository.js";
 import { toSupabaseAppError } from "./supabaseErrors.js";
 
-type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
-
-export type MatchRow = {
-  id: string;
-  source: string;
-  game: GameType;
-  provider_match_id: string;
-  name: string;
-  begin_at: string;
-  end_at: string | null;
-  display_date: string;
-  status: Match["status"];
-  league: string | null;
-  league_image_url: string | null;
-  tournament: string | null;
-  tournament_type: string | null;
-  tournament_country: string | null;
-  tournament_region: string | null;
-  tournament_tier: string | null;
-  tournament_prizepool: string | null;
-  has_bracket: boolean | null;
-  best_of: number | null;
-  match_type: string | null;
-  rescheduled: boolean | null;
-  detailed_stats_available: boolean | null;
-  draw: boolean | null;
-  forfeit: boolean | null;
-  winner_team_id: string | null;
-  winner_name: string | null;
-  teams: JsonValue;
-  score: JsonValue;
-  games: JsonValue;
-  stream_url: string | null;
-  replay_url: string | null;
-  serie: string | null;
-  stage: string | null;
-  raw_payload: JsonValue | null;
-  provider_updated_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
+export type MatchRow = Database["public"]["Tables"]["matches"]["Row"];
 export type MatchRowUpsert = Omit<MatchRow, "id" | "created_at" | "updated_at"> & {
   created_at?: string;
   updated_at?: string;
@@ -59,19 +18,24 @@ export type QueryMatchesOptions = {
   statuses?: Match["status"][];
 };
 
-function asArray<T>(value: JsonValue | null | undefined): T[] {
+export const MATCH_UPSERT_CHUNK_SIZE = 100;
+
+const MATCH_SELECT_COLUMNS =
+  "id, source, game, provider_match_id, name, begin_at, end_at, display_date, status, league, league_image_url, tournament, tournament_type, tournament_country, tournament_region, tournament_tier, tournament_prizepool, has_bracket, best_of, match_type, rescheduled, detailed_stats_available, draw, forfeit, winner_team_id, winner_name, teams, score, games, stream_url, replay_url, serie, stage, raw_payload, provider_updated_at, created_at, updated_at" as const;
+
+function asArray<T>(value: Json | null | undefined): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
-function asRecord(value: JsonValue | null | undefined): Record<string, JsonValue> {
+function asRecord(value: Json | null | undefined): Record<string, Json> {
   if (value != null && typeof value === "object" && !Array.isArray(value)) {
-    return value as Record<string, JsonValue>;
+    return value as Record<string, Json>;
   }
 
   return {};
 }
 
-function buildMatchRawPayload(match: Match): Record<string, JsonValue> {
+function buildMatchRawPayload(match: Match): Record<string, Json> {
   return {
     originalScheduledAt: match.originalScheduledAt ?? null,
     displayTime: match.displayTime,
@@ -107,9 +71,9 @@ export function mapMatchToRow(match: Match): MatchRowUpsert {
     forfeit: match.forfeit ?? null,
     winner_team_id: match.winnerTeamId ?? null,
     winner_name: match.winnerName ?? null,
-    teams: match.teams as JsonValue,
-    score: (match.score ?? []) as JsonValue,
-    games: (match.games ?? []) as JsonValue,
+    teams: match.teams as Json,
+    score: (match.score ?? []) as Json,
+    games: (match.games ?? []) as Json,
     stream_url: match.streamUrl ?? null,
     replay_url: match.replayUrl ?? null,
     serie: match.serie ?? null,
@@ -179,14 +143,15 @@ export function mapRowToMatch(row: MatchRow): Match {
   };
 }
 
-function getSupabaseOrThrow() {
-  const client = getSupabaseClient();
+export function chunkMatchRows(rows: MatchRowUpsert[], chunkSize = MATCH_UPSERT_CHUNK_SIZE): MatchRowUpsert[][] {
+  const normalizedChunkSize = Number.isFinite(chunkSize) && chunkSize > 0 ? Math.trunc(chunkSize) : MATCH_UPSERT_CHUNK_SIZE;
+  const chunks: MatchRowUpsert[][] = [];
 
-  if (!client) {
-    throw new AppError(ERROR_CODES.INTERNAL_ERROR, "Supabase 未配置，无法访问持久化缓存。", 500);
+  for (let index = 0; index < rows.length; index += normalizedChunkSize) {
+    chunks.push(rows.slice(index, index + normalizedChunkSize));
   }
 
-  return client;
+  return chunks;
 }
 
 export async function upsertMatches(matches: Match[]): Promise<void> {
@@ -196,12 +161,15 @@ export async function upsertMatches(matches: Match[]): Promise<void> {
 
   const client = getSupabaseOrThrow();
   const rows = matches.map(mapMatchToRow);
-  const { error } = await client.from("matches").upsert(rows, {
-    onConflict: "source,game,provider_match_id"
-  });
 
-  if (error) {
-    throw toSupabaseAppError(error, "赛程持久化写入失败。");
+  for (const chunk of chunkMatchRows(rows)) {
+    const { error } = await client.from("matches").upsert(chunk, {
+      onConflict: "source,game,provider_match_id"
+    });
+
+    if (error) {
+      throw toSupabaseAppError(error, "赛程持久化写入失败。");
+    }
   }
 }
 
@@ -209,7 +177,7 @@ export async function queryMatchesByDateRange(options: QueryMatchesOptions): Pro
   const client = getSupabaseOrThrow();
   let query = client
     .from("matches")
-    .select("*")
+    .select(MATCH_SELECT_COLUMNS)
     .eq("source", options.source ?? "pandascore")
     .gte("display_date", options.fromDate)
     .lte("display_date", options.toDate)

@@ -4,8 +4,8 @@
 
 ## 当前版本
 
-- 版本：`0.5.0`
-- 状态：持久化赛程缓存与加载性能优化版已完成
+- 版本：`0.6.0`
+- 状态：Supabase 使用优化版已完成
 - 运行方式：本地开发服务，支持生产构建
 - 数据源：PandaScore API
 
@@ -24,6 +24,7 @@
 - 首页提供当前日期、已载入赛事数、进行中赛事数和今日/当日重点赛事。
 - 通过后端代理请求 PandaScore，前端不暴露 token。
 - 支持内存响应缓存、Supabase 持久化窗口缓存、手动刷新和 stale 兜底。
+- Supabase 服务端访问已加入 schema 类型、显式字段查询、分片写入和查询索引优化。
 - 后端使用请求合并避免相同源窗口并发重复拉取 PandaScore。
 - 前端首屏与日期切换会批量加载到本周最后一天，减少按天重复请求。
 - 展示比赛时间、项目、赛事、队伍、状态和 BO 赛制。
@@ -106,9 +107,11 @@ npm test
 npm run build
 ```
 
-## v0.5.0 说明
+## v0.6.0 说明
 
 - Supabase 迁移文件位于 `supabase/migrations/20260526_create_match_cache_tables.sql`。
+- Supabase 查询优化迁移位于 `supabase/migrations/20260527_optimize_match_cache_queries.sql`。
+- 当前远程 Supabase 已执行并验证 v0.6.0 迁移，migration history 已与本地 `20260526`、`20260527` 对齐；`supabase/repair` 仅保留为本次手工修复记录。
 - 数据表用途：
   - `matches`：持久化赛程主数据
   - `match_fetch_windows`：记录窗口 freshness 和过期状态
@@ -121,6 +124,12 @@ npm run build
   - 后端优先命中 fresh window
   - 前端默认批量加载到本周最后一天
   - 滚动到周末后不再按天追加请求
+- Supabase 优化：
+  - 服务端 Supabase client 绑定项目 schema 类型
+  - repository 使用统一 Supabase 访问边界
+  - 查询使用显式字段投影，避免 `select("*")`
+  - `matches` 批量写入按 100 条分片 upsert
+  - 数据库新增贴合查询路径的复合索引和 `updated_at` trigger
 - 验证方式：
   - `npm run typecheck`
   - `npm test`

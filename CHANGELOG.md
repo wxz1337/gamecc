@@ -4,6 +4,42 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循轻量 SemVer。
 
+## [0.6.0] - 2026-05-27
+
+### Added
+
+- 新增 Supabase `Database` schema 类型，并将服务端 client 改为 typed client。
+- 新增 repository 共享 Supabase 访问 helper，统一 Supabase 未配置时的错误边界。
+- 新增 Supabase 查询优化迁移，补充贴合 `matches`、`match_fetch_windows` 和 `sync_runs` 实际访问模式的索引。
+- 新增数据库侧 `updated_at` trigger，自动维护 `matches` 和 `match_fetch_windows` 更新时间。
+- 新增 v0.6.0 规划文档。
+
+### Changed
+
+- Supabase repository 查询从 `select("*")` 改为显式字段投影。
+- `matches` 批量 upsert 改为按 100 条分片写入，降低单次 payload 与网络抖动风险。
+- repository row/upsert 类型改为从 Supabase schema 类型派生。
+- 项目版本号提升至 `0.6.0`。
+
+### Fixed
+
+- 修复 `match_fetch_windows.updated_at` 在 upsert 更新后可能不反映最新修改时间的问题。
+- 整理 Supabase schema-not-ready 判断表达式，提升可读性并避免运算符优先级误读。
+- 补充 Supabase 远程手工执行迁移后的 history repair 记录，并完成远程 migration history 对齐，避免 `db push` 因 history 不同步持续失败。
+- 关闭 `supabase/config.toml` 默认 seed 开关，避免 `db reset` 因缺少 `supabase/seed.sql` 产生错误或噪音。
+
+### Verified
+
+- `npm run typecheck` 通过。
+- `npm test` 通过。
+- `npm run build` 通过。
+
+### Known Gaps
+
+- Supabase 远程迁移已执行并验证，migration history 已与本地文件对齐。
+- 尚未接入 Supabase 运行期指标或后台同步监控面板。
+- 仍未加入浏览器自动化回归测试，复杂交互以本地人工点验为主。
+
 ## [0.5.0] - 2026-05-26
 
 ### Added

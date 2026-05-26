@@ -1,24 +1,10 @@
-import { AppError, ERROR_CODES } from "../../shared/errors.js";
 import type { GameType } from "../../shared/match.js";
-import { getSupabaseClient } from "../services/supabaseClient.js";
+import type { Database } from "../types/supabase.js";
+import { getSupabaseOrThrow } from "./supabaseRepository.js";
 import { toSupabaseAppError } from "./supabaseErrors.js";
 
-type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
-
-export type SyncWindowRow = {
-  id: string;
-  source: string;
-  game: GameType;
-  from_date: string;
-  to_date: string;
-  status_group: string;
-  last_synced_at: string | null;
-  expires_at: string | null;
-  last_error_code: string | null;
-  last_error_message: string | null;
-  created_at: string;
-  updated_at: string;
-};
+export type SyncWindowRow = Database["public"]["Tables"]["match_fetch_windows"]["Row"];
+type SyncWindowUpsert = Database["public"]["Tables"]["match_fetch_windows"]["Insert"];
 
 export type SyncWindowRecord = SyncWindowRow;
 
@@ -38,16 +24,8 @@ export type SyncWindowFailureInput = SyncWindowKey & {
 
 const DEFAULT_WINDOW_TTL_SECONDS = 900;
 const DEFAULT_FAILURE_RETRY_SECONDS = 60;
-
-function getSupabaseOrThrow() {
-  const client = getSupabaseClient();
-
-  if (!client) {
-    throw new AppError(ERROR_CODES.INTERNAL_ERROR, "Supabase 未配置，无法访问持久化缓存。", 500);
-  }
-
-  return client;
-}
+const SYNC_WINDOW_SELECT_COLUMNS =
+  "id, source, game, from_date, to_date, status_group, last_synced_at, expires_at, last_error_code, last_error_message, created_at, updated_at" as const;
 
 function normalizeSeconds(value: number | undefined, fallback: number): number {
   if (value == null || !Number.isFinite(value) || value <= 0) {
@@ -73,7 +51,7 @@ export function isSyncWindowFresh(row: SyncWindowRow, now = new Date()): boolean
   return new Date(row.expires_at).getTime() > now.getTime();
 }
 
-export function buildSuccessWindowPayload(input: SyncWindowSuccessInput): Omit<SyncWindowRow, "id" | "created_at" | "updated_at"> {
+export function buildSuccessWindowPayload(input: SyncWindowSuccessInput): SyncWindowUpsert {
   const now = input.now ?? new Date();
   const ttlSeconds = normalizeSeconds(input.ttlSeconds, DEFAULT_WINDOW_TTL_SECONDS);
 
@@ -90,7 +68,7 @@ export function buildSuccessWindowPayload(input: SyncWindowSuccessInput): Omit<S
   };
 }
 
-export function buildFailureWindowPayload(input: SyncWindowFailureInput): Partial<Omit<SyncWindowRow, "id" | "created_at" | "updated_at">> {
+export function buildFailureWindowPayload(input: SyncWindowFailureInput): SyncWindowUpsert {
   const now = input.now ?? new Date();
   const retryAfterSeconds = normalizeSeconds(input.retryAfterSeconds, DEFAULT_FAILURE_RETRY_SECONDS);
 
@@ -110,7 +88,7 @@ export async function getFreshWindow(key: SyncWindowKey, now = new Date()): Prom
   const client = getSupabaseOrThrow();
   const { data, error } = await client
     .from("match_fetch_windows")
-    .select("*")
+    .select(SYNC_WINDOW_SELECT_COLUMNS)
     .eq("source", key.source)
     .eq("game", key.game)
     .eq("from_date", key.from_date)
@@ -137,7 +115,7 @@ export async function upsertSuccessWindow(input: SyncWindowSuccessInput): Promis
     .upsert(payload, {
       onConflict: "source,game,from_date,to_date,status_group"
     })
-    .select("*")
+    .select(SYNC_WINDOW_SELECT_COLUMNS)
     .single();
 
   if (error || !data) {
@@ -155,7 +133,7 @@ export async function upsertFailedWindow(input: SyncWindowFailureInput): Promise
     .upsert(payload, {
       onConflict: "source,game,from_date,to_date,status_group"
     })
-    .select("*")
+    .select(SYNC_WINDOW_SELECT_COLUMNS)
     .single();
 
   if (error || !data) {

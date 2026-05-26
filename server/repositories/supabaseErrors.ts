@@ -29,7 +29,11 @@ export function isSupabaseSchemaNotReadyError(error: unknown): boolean {
 
   const text = getErrorText(supabaseError);
 
-  return text.includes("relation") && text.includes("does not exist") || text.includes("schema cache") || text.includes("could not find the table");
+  return (
+    (text.includes("relation") && text.includes("does not exist")) ||
+    text.includes("schema cache") ||
+    text.includes("could not find the table")
+  );
 }
 
 export function toSupabaseAppError(error: unknown, fallbackMessage: string): AppError {

@@ -1,23 +1,9 @@
-import { AppError, ERROR_CODES } from "../../shared/errors.js";
 import type { GameType } from "../../shared/match.js";
-import { getSupabaseClient } from "../services/supabaseClient.js";
+import type { Database } from "../types/supabase.js";
+import { getSupabaseOrThrow } from "./supabaseRepository.js";
 import { toSupabaseAppError } from "./supabaseErrors.js";
 
-export type SyncRunRow = {
-  id: string;
-  source: string;
-  game: GameType;
-  from_date: string;
-  to_date: string;
-  status_group: string;
-  started_at: string;
-  finished_at: string | null;
-  success: boolean;
-  fetched_count: number;
-  upserted_count: number;
-  error_code: string | null;
-  error_message: string | null;
-};
+export type SyncRunRow = Database["public"]["Tables"]["sync_runs"]["Row"];
 
 export type SyncRunRecord = SyncRunRow;
 
@@ -39,15 +25,8 @@ export type FinishSyncRunFailureInput = {
   finishedAt?: Date;
 };
 
-function getSupabaseOrThrow() {
-  const client = getSupabaseClient();
-
-  if (!client) {
-    throw new AppError(ERROR_CODES.INTERNAL_ERROR, "Supabase 未配置，无法访问持久化缓存。", 500);
-  }
-
-  return client;
-}
+const SYNC_RUN_SELECT_COLUMNS =
+  "id, source, game, from_date, to_date, status_group, started_at, finished_at, success, fetched_count, upserted_count, error_code, error_message" as const;
 
 function toIso(value: Date | undefined): string {
   return (value ?? new Date()).toISOString();
@@ -93,7 +72,7 @@ export function buildFailureSyncRunPatch(input: FinishSyncRunFailureInput) {
 export async function createSyncRun(input: CreateSyncRunInput): Promise<SyncRunRecord> {
   const client = getSupabaseOrThrow();
   const payload = buildCreateSyncRunPayload(input);
-  const { data, error } = await client.from("sync_runs").insert(payload).select("*").single();
+  const { data, error } = await client.from("sync_runs").insert(payload).select(SYNC_RUN_SELECT_COLUMNS).single();
 
   if (error || !data) {
     throw toSupabaseAppError(error, "同步记录创建失败。");
@@ -105,7 +84,7 @@ export async function createSyncRun(input: CreateSyncRunInput): Promise<SyncRunR
 export async function finishSyncRunSuccess(input: FinishSyncRunSuccessInput): Promise<SyncRunRecord> {
   const client = getSupabaseOrThrow();
   const patch = buildSuccessSyncRunPatch(input);
-  const { data, error } = await client.from("sync_runs").update(patch).eq("id", input.id).select("*").single();
+  const { data, error } = await client.from("sync_runs").update(patch).eq("id", input.id).select(SYNC_RUN_SELECT_COLUMNS).single();
 
   if (error || !data) {
     throw toSupabaseAppError(error, "同步记录更新失败。");
@@ -117,7 +96,7 @@ export async function finishSyncRunSuccess(input: FinishSyncRunSuccessInput): Pr
 export async function finishSyncRunFailure(input: FinishSyncRunFailureInput): Promise<SyncRunRecord> {
   const client = getSupabaseOrThrow();
   const patch = buildFailureSyncRunPatch(input);
-  const { data, error } = await client.from("sync_runs").update(patch).eq("id", input.id).select("*").single();
+  const { data, error } = await client.from("sync_runs").update(patch).eq("id", input.id).select(SYNC_RUN_SELECT_COLUMNS).single();
 
   if (error || !data) {
     throw toSupabaseAppError(error, "同步记录失败状态更新失败。");

@@ -1,6 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../types/supabase.js";
 
-let cachedClient: SupabaseClient | null = null;
+export type SupabaseServerClient = SupabaseClient<Database>;
+
+let cachedClient: SupabaseServerClient | null = null;
 let cachedSignature: string | null = null;
 
 export type SupabaseConfigStatus = {
@@ -44,7 +47,7 @@ export function isSupabaseConfigured(): boolean {
   return getSupabaseConfigStatus().configured;
 }
 
-export function getSupabaseClient(): SupabaseClient | null {
+export function getSupabaseClient(): SupabaseServerClient | null {
   const { url, serviceRoleKey } = readSupabaseConfig();
 
   if (!url || !serviceRoleKey) {
@@ -59,7 +62,7 @@ export function getSupabaseClient(): SupabaseClient | null {
     return cachedClient;
   }
 
-  cachedClient = createClient(url, serviceRoleKey, {
+  cachedClient = createClient<Database>(url, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
@@ -69,4 +72,3 @@ export function getSupabaseClient(): SupabaseClient | null {
 
   return cachedClient;
 }
-
