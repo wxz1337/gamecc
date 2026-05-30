@@ -4,7 +4,7 @@
 
 ## 当前版本
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 状态：Supabase 使用优化版已完成
 - 运行方式：本地开发服务，支持生产构建
 - 数据源：PandaScore API
@@ -65,7 +65,6 @@ PANDASCORE_REQUEST_TIMEOUT_MS=8000
 PANDASCORE_REQUEST_RETRY_COUNT=1
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
-SOURCE_WINDOW_TTL_SECONDS=900
 PORT=3001
 VITE_API_BASE_URL=http://localhost:3001
 ```
@@ -107,6 +106,10 @@ npm test
 npm run build
 ```
 
+## v0.7.0 说明
+
+- 本次仅同步项目版本号至 `0.7.0`，功能基线仍延续 `v0.6.0` 的 Supabase 使用优化版。
+
 ## v0.6.0 说明
 
 - Supabase 迁移文件位于 `supabase/migrations/20260526_create_match_cache_tables.sql`。
@@ -114,11 +117,16 @@ npm run build
 - 当前远程 Supabase 已执行并验证 v0.6.0 迁移，migration history 已与本地 `20260526`、`20260527` 对齐；`supabase/repair` 仅保留为本次手工修复记录。
 - 数据表用途：
   - `matches`：持久化赛程主数据
-  - `match_fetch_windows`：记录窗口 freshness 和过期状态
+  - `match_fetch_windows`：记录窗口同步状态、freshness 和过期信息
   - `sync_runs`：记录每次同步执行结果
 - 缓存策略：
   - 完整响应继续使用服务端内存缓存
-  - 源窗口使用 Supabase 持久化缓存
+  - 历史已结束赛果使用 Supabase 窗口覆盖复用：只要碎片化的 finished 窗口能无断点覆盖请求日期范围，就直接读取 `matches` 表，不再请求 PandaScore
+  - 如果覆盖不完整，只补缺失的日期段，不再整段回源
+  - 新写入的 finished 窗口统一使用 `status_group = "finished"`，旧的 `schedule_finished` / `results_finished` 仍可作为兼容覆盖来源
+  - 新补齐的 finished 窗口按天写入，便于未来任意范围复用
+  - 源窗口使用 Supabase 持久化缓存，TTL 会按比赛状态分层
+  - `refresh=1` 仍会强制整段回源 PandaScore
   - 同一源窗口并发请求通过 in-flight dedupe 合并
 - 请求减少策略：
   - 后端优先命中 fresh window
