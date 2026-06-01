@@ -1,0 +1,286 @@
+<svg width="1600" height="1120" viewBox="0 0 1600 1120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="shadowLarge" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="22" stdDeviation="34" flood-color="#1D1A14" flood-opacity="0.14"/>
+    </filter>
+    <filter id="shadowSmall" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#1D1A14" flood-opacity="0.10"/>
+    </filter>
+    <linearGradient id="topBand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#171510"/>
+      <stop offset="0.58" stop-color="#282014"/>
+      <stop offset="1" stop-color="#59411E"/>
+    </linearGradient>
+    <linearGradient id="highlight" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF9E4"/>
+      <stop offset="1" stop-color="#FFE09A"/>
+    </linearGradient>
+    <style>
+      .page { fill: #efede7; }
+      .surface { fill: #fbfaf5; stroke: #ded8ca; stroke-width: 1; }
+      .card { fill: #fffefa; stroke: #ded8ca; stroke-width: 1; }
+      .subtle { fill: #f3f0e8; stroke: #ded8ca; stroke-width: 1; }
+      .dark { fill: #171510; }
+      .text { fill: #171510; font-family: Inter, "Avenir Next", "Segoe UI", Arial, sans-serif; }
+      .muted { fill: #6D6659; font-family: Inter, "Avenir Next", "Segoe UI", Arial, sans-serif; }
+      .soft { fill: #9A9284; font-family: Inter, "Avenir Next", "Segoe UI", Arial, sans-serif; }
+      .white { fill: #FFFDF8; font-family: Inter, "Avenir Next", "Segoe UI", Arial, sans-serif; }
+      .green { fill: #14885A; }
+      .greenBg { fill: #E6F7EE; }
+      .blue { fill: #2563EB; }
+      .blueBg { fill: #EAF1FF; }
+      .red { fill: #D92D20; }
+      .redBg { fill: #FFF0ED; }
+      .amber { fill: #B86E00; }
+      .amberBg { fill: #FFF3D6; }
+      .mono { font-family: "SFMono-Regular", "Cascadia Mono", Consolas, monospace; }
+      .title { font-size: 42px; font-weight: 820; letter-spacing: 0; }
+      .h1 { font-size: 28px; font-weight: 780; letter-spacing: 0; }
+      .h2 { font-size: 19px; font-weight: 760; letter-spacing: 0; }
+      .h3 { font-size: 15px; font-weight: 740; letter-spacing: 0; }
+      .body { font-size: 13px; font-weight: 520; letter-spacing: 0; }
+      .small { font-size: 12px; font-weight: 520; letter-spacing: 0; }
+      .label { font-size: 11px; font-weight: 720; letter-spacing: 0; }
+    </style>
+  </defs>
+
+  <rect class="page" width="1600" height="1120"/>
+  <text class="text title" x="64" y="82">GameCC UI Redesign · 操作逻辑保持不变</text>
+  <text class="muted body" x="66" y="112">保留当前页面顺序：顶部概览 / 日期周条 / 状态筛选 / 游戏筛选 / 高级筛选折叠 / 比赛列表 / 详情展开 / 加载更多。</text>
+
+  <g filter="url(#shadowLarge)">
+    <rect class="surface" x="64" y="150" width="1120" height="900" rx="30"/>
+
+    <rect x="88" y="174" width="1072" height="142" rx="26" fill="url(#topBand)"/>
+    <g transform="translate(120 204)">
+      <rect width="54" height="54" rx="16" fill="#FFB000"/>
+      <path d="M17 27h20M27 17v20" stroke="#171510" stroke-width="3" stroke-linecap="round"/>
+      <text class="white h1" x="76" y="27">电竞赛程聚合</text>
+      <text class="soft body" x="76" y="56" fill="#D7CEBD">按北京时间查看比赛，先看到赛程，再展开详情。</text>
+    </g>
+    <g transform="translate(760 206)">
+      <rect x="0" y="0" width="136" height="42" rx="21" fill="#FFFDF8" fill-opacity="0.12" stroke="#FFFDF8" stroke-opacity="0.18"/>
+      <text class="white label" x="18" y="26">2026-05-31</text>
+      <rect x="146" y="0" width="112" height="42" rx="21" fill="#FFFDF8" fill-opacity="0.12" stroke="#FFFDF8" stroke-opacity="0.18"/>
+      <text class="white label" x="168" y="26">已载入 26 场</text>
+      <rect x="268" y="0" width="92" height="42" rx="21" fill="#FFB000"/>
+      <text class="text label" x="299" y="26">刷新</text>
+    </g>
+    <g transform="translate(760 264)">
+      <text class="soft small" x="0" y="0" fill="#D7CEBD">当前显示实时赛程数据，已载入 26 场比赛。</text>
+    </g>
+
+    <g transform="translate(88 340)">
+      <rect class="card" width="1072" height="228" rx="24"/>
+      <text class="text h2" x="28" y="38">日期与筛选</text>
+      <text class="muted small" x="28" y="62">交互不变：左右切换日期，点击日期卡选中，选择日期打开日历浮层。</text>
+
+      <rect class="subtle" x="28" y="86" width="42" height="72" rx="14"/>
+      <text class="text h2" x="43" y="130">‹</text>
+
+      <g transform="translate(82 86)">
+        <rect x="0" y="0" width="106" height="72" rx="16" fill="#171510"/>
+        <text class="white label" x="18" y="28">今天</text>
+        <text class="white h2 mono" x="18" y="54">05.31</text>
+      </g>
+      <g transform="translate(200 86)">
+        <rect class="card" width="106" height="72" rx="16"/>
+        <text class="muted label" x="18" y="28">周一</text>
+        <text class="text h2 mono" x="18" y="54">06.01</text>
+      </g>
+      <g transform="translate(318 86)">
+        <rect class="card" width="106" height="72" rx="16"/>
+        <text class="muted label" x="18" y="28">周二</text>
+        <text class="text h2 mono" x="18" y="54">06.02</text>
+      </g>
+      <g transform="translate(436 86)">
+        <rect class="card" width="106" height="72" rx="16"/>
+        <text class="muted label" x="18" y="28">周三</text>
+        <text class="text h2 mono" x="18" y="54">06.03</text>
+      </g>
+      <g transform="translate(554 86)">
+        <rect class="card" width="106" height="72" rx="16"/>
+        <text class="muted label" x="18" y="28">周四</text>
+        <text class="text h2 mono" x="18" y="54">06.04</text>
+      </g>
+      <g transform="translate(672 86)">
+        <rect class="card" width="106" height="72" rx="16"/>
+        <text class="muted label" x="18" y="28">周五</text>
+        <text class="text h2 mono" x="18" y="54">06.05</text>
+      </g>
+      <g transform="translate(790 86)">
+        <rect class="card" width="106" height="72" rx="16"/>
+        <text class="muted label" x="18" y="28">周六</text>
+        <text class="text h2 mono" x="18" y="54">06.06</text>
+      </g>
+      <rect class="subtle" x="908" y="86" width="42" height="72" rx="14"/>
+      <text class="text h2" x="923" y="130">›</text>
+      <rect class="dark" x="962" y="86" width="82" height="72" rx="16"/>
+      <text class="white label" x="978" y="116">选择日期</text>
+      <text class="white h3" x="992" y="142">▦</text>
+
+      <g transform="translate(28 178)">
+        <text class="muted label" x="0" y="22">状态</text>
+        <rect x="48" y="0" width="72" height="36" rx="18" fill="#171510"/>
+        <text class="white label" x="70" y="23">进行中</text>
+        <rect class="subtle" x="128" y="0" width="72" height="36" rx="18"/>
+        <text class="muted label" x="150" y="23">已结束</text>
+      </g>
+      <g transform="translate(312 178)">
+        <text class="muted label" x="0" y="22">游戏</text>
+        <rect x="48" y="0" width="72" height="36" rx="18" fill="#171510"/>
+        <text class="white label" x="70" y="23">全部</text>
+        <rect class="subtle" x="128" y="0" width="92" height="36" rx="18"/>
+        <text class="muted label" x="152" y="23">LOL</text>
+        <rect class="subtle" x="228" y="0" width="92" height="36" rx="18"/>
+        <text class="muted label" x="254" y="23">CS2</text>
+        <rect class="subtle" x="328" y="0" width="112" height="36" rx="18"/>
+        <text class="muted label" x="354" y="23">Valorant</text>
+      </g>
+      <rect class="subtle" x="870" y="178" width="84" height="36" rx="18"/>
+      <text class="text label" x="897" y="201">筛选</text>
+      <text class="text label" x="932" y="201">⌄</text>
+      <rect class="subtle" x="962" y="178" width="82" height="36" rx="18"/>
+      <text class="text label" x="987" y="201">重置</text>
+    </g>
+
+    <g transform="translate(88 588)">
+      <rect class="card" width="1072" height="92" rx="22"/>
+      <text class="muted label" x="28" y="30">高级筛选展开态</text>
+      <text class="muted small" x="28" y="56">仅视觉重排，仍由“筛选”按钮展开或收起。</text>
+      <g transform="translate(260 28)">
+        <text class="muted label" x="0" y="22">赛区</text>
+        <rect x="48" y="0" width="66" height="36" rx="18" fill="#171510"/>
+        <text class="white label" x="70" y="23">全部</text>
+        <rect class="subtle" x="122" y="0" width="66" height="36" rx="18"/>
+        <text class="muted label" x="144" y="23">中国</text>
+        <rect class="subtle" x="196" y="0" width="66" height="36" rx="18"/>
+        <text class="muted label" x="218" y="23">欧洲</text>
+      </g>
+      <g transform="translate(590 28)">
+        <text class="muted label" x="0" y="22">赛事级别</text>
+        <rect x="74" y="0" width="50" height="36" rx="18" fill="#171510"/>
+        <text class="white label" x="94" y="23">S</text>
+        <rect x="132" y="0" width="50" height="36" rx="18" fill="#171510"/>
+        <text class="white label" x="152" y="23">A</text>
+        <rect class="subtle" x="190" y="0" width="50" height="36" rx="18"/>
+        <text class="muted label" x="210" y="23">B</text>
+        <rect class="subtle" x="248" y="0" width="50" height="36" rx="18"/>
+        <text class="muted label" x="268" y="23">C</text>
+      </g>
+    </g>
+
+    <g transform="translate(88 708)">
+      <text class="muted label" x="0" y="0">MATCH LIST</text>
+      <text class="text h1" x="0" y="34">全部赛事</text>
+      <text class="muted small" x="128" y="32">时间线 2026-05-31 至 2026-06-06 · 当前 26 场</text>
+      <rect class="subtle" x="980" y="4" width="92" height="36" rx="18"/>
+      <text class="text label" x="1010" y="27">26 场</text>
+
+      <g transform="translate(0 64)">
+        <rect class="card" width="1072" height="128" rx="22" filter="url(#shadowSmall)"/>
+        <text class="text h2 mono" x="28" y="44">20:00</text>
+        <text class="muted small" x="28" y="68">05-31</text>
+        <rect class="greenBg" x="116" y="24" width="64" height="28" rx="14"/>
+        <text class="green label" x="136" y="43">LIVE</text>
+        <rect class="amberBg" x="188" y="24" width="54" height="28" rx="14"/>
+        <text class="amber label" x="205" y="43">BO3</text>
+        <text class="muted body" x="260" y="43">LPL Summer · 常规赛</text>
+        <text class="text h2" x="116" y="88">BLG</text>
+        <text class="text h1 mono" x="304" y="94">1 : 0</text>
+        <text class="text h2" x="450" y="88">TES</text>
+        <text class="muted small" x="620" y="74">中国赛区 · S级 · 赛后统计可用</text>
+        <rect x="944" y="38" width="88" height="44" rx="16" fill="#171510"/>
+        <text class="white label" x="969" y="65">详情</text>
+      </g>
+
+      <g transform="translate(0 208)">
+        <rect class="card" width="1072" height="128" rx="22"/>
+        <text class="text h2 mono" x="28" y="44">21:30</text>
+        <text class="muted small" x="28" y="68">05-31</text>
+        <rect class="blueBg" x="116" y="24" width="78" height="28" rx="14"/>
+        <text class="blue label" x="136" y="43">未开始</text>
+        <rect class="amberBg" x="202" y="24" width="54" height="28" rx="14"/>
+        <text class="amber label" x="219" y="43">BO5</text>
+        <text class="muted body" x="274" y="43">LEC · Playoffs</text>
+        <text class="text h2" x="116" y="88">G2</text>
+        <text class="text h1 mono" x="316" y="94">vs</text>
+        <text class="text h2" x="450" y="88">FNC</text>
+        <text class="muted small" x="620" y="74">欧洲赛区 · A级 · 原定 21:00</text>
+        <rect class="subtle" x="944" y="38" width="88" height="44" rx="16"/>
+        <text class="text label" x="969" y="65">详情</text>
+      </g>
+    </g>
+  </g>
+
+  <g filter="url(#shadowLarge)">
+    <rect class="surface" x="1226" y="150" width="310" height="690" rx="42"/>
+    <rect x="1250" y="174" width="262" height="642" rx="32" fill="#fbfaf5"/>
+    <rect x="1250" y="174" width="262" height="134" rx="32" fill="url(#topBand)"/>
+    <text class="white h2" x="1274" y="214">电竞赛程聚合</text>
+    <text class="soft small" x="1274" y="239" fill="#D7CEBD">北京时间 · 已载入 26 场</text>
+    <rect x="1274" y="260" width="72" height="34" rx="17" fill="#FFB000"/>
+    <text class="text label" x="1297" y="282">刷新</text>
+    <rect x="1360" y="260" width="114" height="34" rx="17" fill="#FFFDF8" fill-opacity="0.13"/>
+    <text class="white label" x="1381" y="282">2026-05-31</text>
+
+    <g transform="translate(1274 328)">
+      <rect x="0" y="0" width="60" height="56" rx="15" fill="#171510"/>
+      <text class="white label" x="15" y="22">今天</text>
+      <text class="white h3 mono" x="12" y="43">05.31</text>
+      <rect class="card" x="68" y="0" width="60" height="56" rx="15"/>
+      <text class="muted label" x="84" y="22">周一</text>
+      <text class="text h3 mono" x="80" y="43">06.01</text>
+      <rect class="card" x="136" y="0" width="60" height="56" rx="15"/>
+      <text class="muted label" x="152" y="22">周二</text>
+      <text class="text h3 mono" x="148" y="43">06.02</text>
+      <rect class="subtle" x="204" y="0" width="34" height="56" rx="15"/>
+      <text class="text h3" x="216" y="36">▦</text>
+    </g>
+
+    <g transform="translate(1274 406)">
+      <rect class="card" width="214" height="112" rx="22"/>
+      <text class="muted label" x="16" y="28">状态</text>
+      <rect x="16" y="44" width="78" height="34" rx="17" fill="#171510"/>
+      <text class="white label" x="38" y="66">进行中</text>
+      <rect class="subtle" x="104" y="44" width="78" height="34" rx="17"/>
+      <text class="muted label" x="126" y="66">已结束</text>
+    </g>
+
+    <g transform="translate(1274 538)">
+      <rect class="card" width="214" height="92" rx="22"/>
+      <text class="muted label" x="16" y="28">游戏</text>
+      <rect x="16" y="44" width="58" height="32" rx="16" fill="#171510"/>
+      <text class="white label" x="37" y="65">全</text>
+      <rect class="subtle" x="82" y="44" width="58" height="32" rx="16"/>
+      <text class="muted label" x="101" y="65">LOL</text>
+      <rect class="subtle" x="148" y="44" width="50" height="32" rx="16"/>
+      <text class="muted label" x="164" y="65">CS2</text>
+    </g>
+
+    <g transform="translate(1274 650)">
+      <rect class="card" width="214" height="76" rx="20"/>
+      <text class="text h3 mono" x="16" y="32">20:00</text>
+      <rect class="greenBg" x="16" y="44" width="54" height="22" rx="11"/>
+      <text class="green label" x="31" y="60">LIVE</text>
+      <text class="text h3" x="92" y="32">BLG</text>
+      <text class="text h3 mono" x="130" y="33">1:0</text>
+      <text class="text h3" x="168" y="32">TES</text>
+      <text class="muted small" x="92" y="58">LPL Summer</text>
+    </g>
+
+    <g transform="translate(1274 742)">
+      <rect class="card" width="214" height="54" rx="18"/>
+      <text class="text h3 mono" x="16" y="33">21:30</text>
+      <text class="text h3" x="92" y="33">G2 vs FNC</text>
+    </g>
+  </g>
+
+  <g transform="translate(1226 900)">
+    <text class="text h2" x="0" y="0">保留的操作逻辑</text>
+    <text class="muted body" x="0" y="36">1. 顶部日期与已载入数量仍来自当前状态。</text>
+    <text class="muted body" x="0" y="66">2. WeekStrip、状态 Tabs、游戏 Tabs 的顺序不变。</text>
+    <text class="muted body" x="0" y="96">3. “筛选”只展开赛区与级别，“重置”回到默认。</text>
+    <text class="muted body" x="0" y="126">4. 详情仍在单场卡片内展开，列表继续负责加载更多。</text>
+  </g>
+</svg>

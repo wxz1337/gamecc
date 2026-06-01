@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { CalendarCheck2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { getBeijingWeekDates } from "../../shared/date";
 
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"] as const;
@@ -98,17 +99,17 @@ export function MatchCalendarPicker({
     >
       <header className="match-calendar-panel__header">
         <button className="match-calendar-panel__nav" onClick={() => moveMonth(-12)} type="button" aria-label="上一年">
-          «
+          <ChevronsLeft className="size-4" />
         </button>
         <button className="match-calendar-panel__nav" onClick={() => moveMonth(-1)} type="button" aria-label="上一月">
-          ‹
+          <ChevronLeft className="size-4" />
         </button>
         <strong className="match-calendar-panel__title">{getMonthTitle(year, monthIndex)}</strong>
         <button className="match-calendar-panel__nav" onClick={() => moveMonth(1)} type="button" aria-label="下一月">
-          ›
+          <ChevronRight className="size-4" />
         </button>
         <button className="match-calendar-panel__nav" onClick={() => moveMonth(12)} type="button" aria-label="下一年">
-          »
+          <ChevronsRight className="size-4" />
         </button>
       </header>
 
@@ -150,7 +151,7 @@ export function MatchCalendarPicker({
 
       <footer className="match-calendar-panel__footer">
         <button className="match-calendar-confirm-button" onClick={confirmDate} type="button">
-          <span aria-hidden="true">▣</span>
+          <CalendarCheck2 className="size-4" />
           选择日期
         </button>
         <p className="match-calendar-summary">

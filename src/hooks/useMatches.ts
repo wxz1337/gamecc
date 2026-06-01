@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Match, MatchFacets, MatchesResponse } from "../../shared/match";
 import { fetchMatches, MatchesApiError } from "../api/matches";
 import { createMockMatchesResponse } from "../mocks/matches";
@@ -18,6 +18,35 @@ type UseMatchesResult = {
   refresh: () => void;
   appendMatches: (filters: MatchPageState) => Promise<void>;
 };
+
+type MatchesSource = "live" | "mock";
+
+type DisplayCacheEntry = {
+  response: MatchesResponse;
+  source: MatchesSource;
+};
+
+type VisibleDataEntry = DisplayCacheEntry & {
+  key: string;
+};
+
+const DISPLAY_CACHE_LIMIT = 20;
+
+function buildDisplayCacheKey(filters: MatchPageState): string {
+  return JSON.stringify({
+    view: filters.view,
+    from: filters.from,
+    game: filters.game,
+    status: filters.status,
+    tier: filters.tier,
+    query: filters.query,
+    league: filters.league,
+    team: filters.team,
+    region: filters.region,
+    stage: filters.stage,
+    sort: filters.sort
+  });
+}
 
 function buildFacetOptions(values: Map<string, number>, labelMapper: (value: string) => string) {
   return [...values.entries()]
@@ -118,14 +147,31 @@ function mergeResponses(current: MatchesResponse, next: MatchesResponse): Matche
   };
 }
 
+function createRequestFailureError(): MatchesApiError {
+  return new MatchesApiError("赛程数据暂时获取失败。", 500, "REQUEST_FAILED");
+}
+
 export function useMatches({ filters }: UseMatchesParams): UseMatchesResult {
   const requestIdRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
-  const [data, setData] = useState<MatchesResponse | null>(null);
+  const cacheRef = useRef(new Map<string, DisplayCacheEntry>());
+  const [dataEntry, setDataEntry] = useState<VisibleDataEntry | null>(null);
+  const [pendingDisplayKey, setPendingDisplayKey] = useState<string | null>(buildDisplayCacheKey(filters));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<MatchesApiError | null>(null);
   const [appendError, setAppendError] = useState<MatchesApiError | null>(null);
   const [source, setSource] = useState<"live" | "mock" | "error">("live");
+  const currentDisplayKey = buildDisplayCacheKey(filters);
+  const cachedEntry = cacheRef.current.get(currentDisplayKey) ?? null;
+  const visibleEntry =
+    dataEntry?.key === currentDisplayKey
+      ? dataEntry
+      : cachedEntry
+        ? { ...cachedEntry, key: currentDisplayKey }
+        : null;
+  const visibleData = visibleEntry?.response ?? null;
+  const visibleSource = visibleEntry?.source ?? source;
+  const visibleLoading = loading || (pendingDisplayKey === currentDisplayKey && visibleData == null && error == null);
 
   const getMockRequestFilters = (current: MatchPageState): MatchPageState => {
     if (current.status !== "running") {
@@ -142,7 +188,7 @@ export function useMatches({ filters }: UseMatchesParams): UseMatchesResult {
     currentFilters: MatchPageState,
     refresh: boolean,
     signal: AbortSignal
-  ): Promise<{ response: MatchesResponse; source: "live" | "mock" }> => {
+  ): Promise<{ response: MatchesResponse; source: MatchesSource }> => {
     try {
       return {
         response: await fetchMatches({
@@ -164,7 +210,40 @@ export function useMatches({ filters }: UseMatchesParams): UseMatchesResult {
     }
   };
 
-  const loadMatches = async (requestFilters: MatchPageState, refresh: boolean, mode: "replace" | "append") => {
+  const storeDisplayCacheEntry = (key: string, entry: DisplayCacheEntry) => {
+    const cache = cacheRef.current;
+
+    if (cache.has(key)) {
+      cache.delete(key);
+    }
+
+    cache.set(key, entry);
+
+    while (cache.size > DISPLAY_CACHE_LIMIT) {
+      const oldestKey = cache.keys().next().value as string | undefined;
+      if (!oldestKey) {
+        break;
+      }
+
+      cache.delete(oldestKey);
+    }
+  };
+
+  const getDisplayEntry = (key: string): VisibleDataEntry | null => {
+    if (dataEntry?.key === key) {
+      return dataEntry;
+    }
+
+    const cached = cacheRef.current.get(key) ?? null;
+    return cached ? { ...cached, key } : null;
+  };
+
+  const loadMatches = async (
+    requestFilters: MatchPageState,
+    refresh: boolean,
+    mode: "replace" | "append",
+    displayKey = buildDisplayCacheKey(requestFilters)
+  ) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
 
@@ -177,6 +256,12 @@ export function useMatches({ filters }: UseMatchesParams): UseMatchesResult {
     setError(null);
     setAppendError(null);
     setSource("live");
+    setPendingDisplayKey(displayKey);
+
+    if (mode === "replace") {
+      const cached = cacheRef.current.get(displayKey) ?? null;
+      setDataEntry(cached ? { ...cached, key: displayKey } : null);
+    }
 
     try {
       const { response, source: nextSource } = await resolveMatchesResponse(requestFilters, refresh, controller.signal);
@@ -186,34 +271,30 @@ export function useMatches({ filters }: UseMatchesParams): UseMatchesResult {
       }
 
       setSource(nextSource);
-      setData((current) => {
-        if (mode === "append" && current) {
-          return mergeResponses(current, response);
-        }
+      if (mode === "append") {
+        const baseEntry = getDisplayEntry(displayKey);
+        const mergedResponse = baseEntry ? mergeResponses(baseEntry.response, response) : response;
+        const nextEntry = { key: displayKey, response: mergedResponse, source: nextSource } as VisibleDataEntry;
 
-        return response;
-      });
+        storeDisplayCacheEntry(displayKey, { response: mergedResponse, source: nextSource });
+        setDataEntry(nextEntry);
+      } else {
+        storeDisplayCacheEntry(displayKey, { response, source: nextSource });
+        setDataEntry({ key: displayKey, response, source: nextSource });
+      }
     } catch (caughtError) {
       if (requestIdRef.current !== requestId || controller.signal.aborted) {
         return;
       }
 
       if (caughtError instanceof MatchesApiError) {
-        if (caughtError.code === "TOKEN_MISSING" && import.meta.env.DEV) {
-          setData(createMockMatchesResponse(getMockRequestFilters(filters)));
-          setSource("mock");
-          setError(null);
-          setAppendError(null);
-          return;
-        }
-
         if (mode === "append") {
           setAppendError(caughtError);
         } else {
           setError(caughtError);
         }
       } else {
-        const nextError = new MatchesApiError("赛程数据暂时获取失败。", 500, "REQUEST_FAILED");
+        const nextError = createRequestFailureError();
         if (mode === "append") {
           setAppendError(nextError);
         } else {
@@ -222,13 +303,10 @@ export function useMatches({ filters }: UseMatchesParams): UseMatchesResult {
       }
 
       setSource("error");
-      setData((current) => {
-        if (mode === "append") {
-          return current;
-        }
-
-        return null;
-      });
+      if (mode === "replace") {
+        const fallbackEntry = getDisplayEntry(displayKey);
+        setDataEntry(fallbackEntry);
+      }
     } finally {
       if (requestIdRef.current === requestId) {
         setLoading(false);
@@ -236,35 +314,34 @@ export function useMatches({ filters }: UseMatchesParams): UseMatchesResult {
     }
   };
 
-  useEffect(() => {
-    void loadMatches(filters, false, "replace");
+  useLayoutEffect(() => {
+    void loadMatches(filters, false, "replace", currentDisplayKey);
 
     return () => {
       controllerRef.current?.abort();
     };
-  }, [filters]);
+  }, [currentDisplayKey, filters]);
 
   return {
-    data,
-    loading,
+    data: visibleData,
+    loading: visibleLoading,
     error,
     appendError,
-    source,
+    source: visibleSource,
     refresh: () => {
-      const refreshFilters = data
+      const refreshFilters = visibleData
         ? {
             ...filters,
-            from: data.from,
-            to: data.to
+            from: visibleData.from,
+            to: visibleData.to
           }
         : filters;
 
-      void loadMatches(refreshFilters, true, "replace");
+      void loadMatches(refreshFilters, true, "replace", currentDisplayKey);
     },
     appendMatches: async (nextFilters: MatchPageState) => {
       setAppendError(null);
-      await loadMatches(nextFilters, false, "append");
-      return;
+      await loadMatches(nextFilters, false, "append", currentDisplayKey);
     }
   };
 }

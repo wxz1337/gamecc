@@ -1,12 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError, ERROR_CODES } from "../../shared/errors.js";
+import { addBeijingDays, getBeijingDateRangeUtc, getBeijingTodayDate } from "../../shared/date.js";
 import type { Match, MatchQuery } from "../../shared/match.js";
 import { mapPandaScoreMatch } from "../mappers/pandascoreMapper.js";
 import type { PandaScoreMatch } from "../types/pandascore.js";
-import { getMatches } from "./matchService.js";
+import { getMatches, getSourceWindowTtlSeconds } from "./matchService.js";
 import { fetchPandaScoreMatches } from "./pandascoreClient.js";
 import { createSyncRun, finishSyncRunFailure, finishSyncRunSuccess } from "../repositories/syncRunRepository.js";
-import { getFreshWindow, upsertFailedWindow, upsertSuccessWindow } from "../repositories/syncWindowRepository.js";
+import {
+  getFreshWindow,
+  getSuccessfulWindowsForCoverage,
+  upsertFailedWindow,
+  upsertSuccessWindow
+} from "../repositories/syncWindowRepository.js";
 import { queryMatchesByDateRange, upsertMatches } from "../repositories/matchRepository.js";
 
 vi.mock("./pandascoreClient.js", () => ({
@@ -20,6 +26,7 @@ vi.mock("../repositories/matchRepository.js", () => ({
 
 vi.mock("../repositories/syncWindowRepository.js", () => ({
   getFreshWindow: vi.fn(),
+  getSuccessfulWindowsForCoverage: vi.fn(),
   upsertFailedWindow: vi.fn(),
   upsertSuccessWindow: vi.fn()
 }));
@@ -36,6 +43,7 @@ vi.mock("./inFlightRequestService.js", () => ({
 
 const mockedFetchPandaScoreMatches = vi.mocked(fetchPandaScoreMatches);
 const mockedGetFreshWindow = vi.mocked(getFreshWindow);
+const mockedGetSuccessfulWindowsForCoverage = vi.mocked(getSuccessfulWindowsForCoverage);
 const mockedQueryMatchesByDateRange = vi.mocked(queryMatchesByDateRange);
 const mockedUpsertMatches = vi.mocked(upsertMatches);
 const mockedCreateSyncRun = vi.mocked(createSyncRun);
@@ -146,7 +154,7 @@ function buildFreshWindow(overrides: Partial<Record<string, string>> = {}) {
     game: "lol" as const,
     from_date: "2026-06-01",
     to_date: "2026-06-07",
-    status_group: "results_finished",
+    status_group: "finished",
     last_synced_at: "2026-05-03T14:10:00.000Z",
     expires_at: "2026-05-04T14:10:00.000Z",
     last_error_code: null,
@@ -161,9 +169,21 @@ function buildMatch(overrides: RawMatchOverrides, game: "cs2" | "valorant" | "lo
   return mapPandaScoreMatch(buildRawMatch(overrides), game);
 }
 
+function buildHistoricalQuery(overrides: Partial<MatchQuery> = {}): MatchQuery {
+  const today = getBeijingTodayDate();
+
+  return buildQuery({
+    from: addBeijingDays(today, -7),
+    to: addBeijingDays(today, -1),
+    refresh: false,
+    ...overrides
+  });
+}
+
 beforeEach(() => {
   mockedFetchPandaScoreMatches.mockReset();
   mockedGetFreshWindow.mockReset();
+  mockedGetSuccessfulWindowsForCoverage.mockReset();
   mockedQueryMatchesByDateRange.mockReset();
   mockedUpsertMatches.mockReset();
   mockedCreateSyncRun.mockReset();
@@ -173,6 +193,7 @@ beforeEach(() => {
   mockedUpsertFailedWindow.mockReset();
 
   mockedGetFreshWindow.mockResolvedValue(null);
+  mockedGetSuccessfulWindowsForCoverage.mockResolvedValue([]);
   mockedQueryMatchesByDateRange.mockResolvedValue([]);
   mockedUpsertMatches.mockResolvedValue(undefined);
   mockedCreateSyncRun.mockResolvedValue({
@@ -181,7 +202,7 @@ beforeEach(() => {
     game: "lol",
     from_date: "2026-06-01",
     to_date: "2026-06-07",
-    status_group: "results_finished",
+    status_group: "finished",
     started_at: "2026-05-03T14:10:00.000Z",
     finished_at: null,
     success: false,
@@ -196,7 +217,7 @@ beforeEach(() => {
     game: "lol",
     from_date: "2026-06-01",
     to_date: "2026-06-07",
-    status_group: "results_finished",
+    status_group: "finished",
     started_at: "2026-05-03T14:10:00.000Z",
     finished_at: "2026-05-03T14:11:00.000Z",
     success: true,
@@ -211,7 +232,7 @@ beforeEach(() => {
     game: "lol",
     from_date: "2026-06-01",
     to_date: "2026-06-07",
-    status_group: "results_finished",
+    status_group: "finished",
     started_at: "2026-05-03T14:10:00.000Z",
     finished_at: "2026-05-03T14:11:00.000Z",
     success: false,
@@ -225,10 +246,411 @@ beforeEach(() => {
 
   delete process.env.SUPABASE_URL;
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-  delete process.env.SOURCE_WINDOW_TTL_SECONDS;
 });
 
 describe("matchService supabase flow", () => {
+  it("fills only the missing leading day for historical finished coverage", async () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+
+    const from = "2026-05-04";
+    const to = "2026-05-18";
+
+    mockedGetSuccessfulWindowsForCoverage.mockResolvedValue([
+      buildFreshWindow({
+        from_date: "2026-05-05",
+        to_date: "2026-05-10",
+        status_group: "schedule_finished"
+      }),
+      buildFreshWindow({
+        from_date: "2026-05-11",
+        to_date: "2026-05-17",
+        status_group: "results_finished"
+      }),
+      buildFreshWindow({
+        from_date: "2026-05-18",
+        to_date: "2026-05-24",
+        status_group: "finished"
+      })
+    ]);
+    mockedFetchPandaScoreMatches.mockResolvedValue([
+      buildRawMatch({
+        id: 11,
+        begin_at: "2026-05-04T12:00:00.000Z",
+        status: "finished",
+        name: "Missing Leading Day Match"
+      })
+    ]);
+    mockedQueryMatchesByDateRange.mockResolvedValue([
+      buildMatch({
+        id: 11,
+        begin_at: "2026-05-04T12:00:00.000Z",
+        status: "finished",
+        name: "Missing Leading Day Match"
+      })
+    ]);
+
+    const response = await getMatches(
+      buildQuery({
+        from,
+        to,
+        refresh: false
+      })
+    );
+
+    expect(response.total).toBe(1);
+    expect(mockedGetSuccessfulWindowsForCoverage).toHaveBeenCalledTimes(1);
+    expect(mockedGetSuccessfulWindowsForCoverage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "pandascore",
+        game: "lol",
+        from_date: from,
+        to_date: to,
+        status_groups: ["finished", "schedule_finished", "results_finished"]
+      })
+    );
+    expect(mockedFetchPandaScoreMatches).toHaveBeenCalledTimes(1);
+    expect(mockedFetchPandaScoreMatches).toHaveBeenCalledWith(
+      "lol",
+      getBeijingDateRangeUtc("2026-05-04", "2026-05-04"),
+      expect.objectContaining({
+        statuses: ["finished"]
+      })
+    );
+    expect(mockedQueryMatchesByDateRange).toHaveBeenCalledTimes(1);
+    expect(mockedQueryMatchesByDateRange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "pandascore",
+        game: "lol",
+        fromDate: from,
+        toDate: to
+      })
+    );
+    expect(mockedCreateSyncRun).toHaveBeenCalledTimes(1);
+    expect(mockedUpsertMatches).toHaveBeenCalledTimes(1);
+    expect(mockedUpsertSuccessWindow).toHaveBeenCalledTimes(1);
+    expect(mockedUpsertSuccessWindow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from_date: "2026-05-04",
+        to_date: "2026-05-04",
+        status_group: "finished"
+      })
+    );
+  });
+
+  it("fills only the missing middle day for historical finished coverage", async () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+
+    const from = "2026-05-20";
+    const to = "2026-05-28";
+
+    mockedGetSuccessfulWindowsForCoverage.mockResolvedValue([
+      buildFreshWindow({
+        from_date: "2026-05-20",
+        to_date: "2026-05-25",
+        status_group: "schedule_finished"
+      }),
+      buildFreshWindow({
+        from_date: "2026-05-27",
+        to_date: "2026-05-28",
+        status_group: "results_finished"
+      })
+    ]);
+    mockedFetchPandaScoreMatches.mockResolvedValue([
+      buildRawMatch({
+        id: 12,
+        begin_at: "2026-05-26T12:00:00.000Z",
+        status: "finished",
+        name: "Missing Middle Day Match"
+      })
+    ]);
+    mockedQueryMatchesByDateRange.mockResolvedValue([
+      buildMatch({
+        id: 12,
+        begin_at: "2026-05-26T12:00:00.000Z",
+        status: "finished",
+        name: "Missing Middle Day Match"
+      })
+    ]);
+
+    const response = await getMatches(
+      buildQuery({
+        from,
+        to,
+        refresh: false
+      })
+    );
+
+    expect(response.total).toBe(1);
+    expect(mockedGetSuccessfulWindowsForCoverage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "pandascore",
+        game: "lol",
+        from_date: from,
+        to_date: to,
+        status_groups: ["finished", "schedule_finished", "results_finished"]
+      })
+    );
+    expect(mockedFetchPandaScoreMatches).toHaveBeenCalledTimes(1);
+    expect(mockedFetchPandaScoreMatches).toHaveBeenCalledWith(
+      "lol",
+      getBeijingDateRangeUtc("2026-05-26", "2026-05-26"),
+      expect.objectContaining({
+        statuses: ["finished"]
+      })
+    );
+    expect(mockedQueryMatchesByDateRange).toHaveBeenCalledTimes(1);
+    expect(mockedUpsertSuccessWindow).toHaveBeenCalledTimes(1);
+    expect(mockedUpsertSuccessWindow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from_date: "2026-05-26",
+        to_date: "2026-05-26",
+        status_group: "finished"
+      })
+    );
+  });
+
+  it("fills a consecutive missing range with one PandaScore request", async () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+
+    const from = "2026-05-01";
+    const to = "2026-05-10";
+
+    mockedGetSuccessfulWindowsForCoverage.mockResolvedValue([
+      buildFreshWindow({
+        from_date: "2026-05-01",
+        to_date: "2026-05-03",
+        status_group: "schedule_finished"
+      }),
+      buildFreshWindow({
+        from_date: "2026-05-06",
+        to_date: "2026-05-10",
+        status_group: "results_finished"
+      })
+    ]);
+    mockedFetchPandaScoreMatches.mockResolvedValue([
+      buildRawMatch({
+        id: 13,
+        begin_at: "2026-05-04T12:00:00.000Z",
+        status: "finished",
+        name: "Missing Consecutive Days Match"
+      }),
+      buildRawMatch({
+        id: 14,
+        begin_at: "2026-05-05T12:00:00.000Z",
+        status: "finished",
+        name: "Missing Consecutive Days Match 2"
+      })
+    ]);
+    mockedQueryMatchesByDateRange.mockResolvedValue([
+      buildMatch({
+        id: 13,
+        begin_at: "2026-05-04T12:00:00.000Z",
+        status: "finished",
+        name: "Missing Consecutive Days Match"
+      }),
+      buildMatch({
+        id: 14,
+        begin_at: "2026-05-05T12:00:00.000Z",
+        status: "finished",
+        name: "Missing Consecutive Days Match 2"
+      })
+    ]);
+
+    const response = await getMatches(
+      buildQuery({
+        from,
+        to,
+        refresh: false
+      })
+    );
+
+    expect(response.total).toBe(2);
+    expect(mockedFetchPandaScoreMatches).toHaveBeenCalledTimes(1);
+    expect(mockedFetchPandaScoreMatches).toHaveBeenCalledWith(
+      "lol",
+      getBeijingDateRangeUtc("2026-05-04", "2026-05-05"),
+      expect.objectContaining({
+        statuses: ["finished"]
+      })
+    );
+    expect(mockedQueryMatchesByDateRange).toHaveBeenCalledTimes(1);
+    expect(mockedUpsertSuccessWindow).toHaveBeenCalledTimes(2);
+    expect(mockedUpsertSuccessWindow).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        from_date: "2026-05-04",
+        to_date: "2026-05-04",
+        status_group: "finished"
+      })
+    );
+    expect(mockedUpsertSuccessWindow).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        from_date: "2026-05-05",
+        to_date: "2026-05-05",
+        status_group: "finished"
+      })
+    );
+  });
+
+  it("returns DB rows without calling PandaScore when coverage is complete", async () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+
+    const from = "2026-05-11";
+    const to = "2026-05-17";
+
+    mockedGetSuccessfulWindowsForCoverage.mockResolvedValue([
+      buildFreshWindow({
+        from_date: "2026-05-11",
+        to_date: "2026-05-13",
+        status_group: "schedule_finished"
+      }),
+      buildFreshWindow({
+        from_date: "2026-05-14",
+        to_date: "2026-05-17",
+        status_group: "results_finished"
+      })
+    ]);
+    mockedQueryMatchesByDateRange.mockResolvedValue([
+      buildMatch({
+        id: 15,
+        begin_at: "2026-05-12T12:00:00.000Z",
+        status: "finished",
+        name: "Covered Historical Match"
+      })
+    ]);
+
+    const response = await getMatches(
+      buildQuery({
+        from,
+        to,
+        refresh: false
+      })
+    );
+
+    expect(response.total).toBe(1);
+    expect(response.matches[0]).toMatchObject({
+      id: "15",
+      status: "finished"
+    });
+    expect(mockedFetchPandaScoreMatches).not.toHaveBeenCalled();
+    expect(mockedGetFreshWindow).not.toHaveBeenCalled();
+    expect(mockedQueryMatchesByDateRange).toHaveBeenCalledTimes(1);
+    expect(mockedCreateSyncRun).not.toHaveBeenCalled();
+    expect(mockedUpsertMatches).not.toHaveBeenCalled();
+  });
+
+  it("fills the whole range when there is no coverage", async () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+
+    const from = "2026-05-18";
+    const to = "2026-05-24";
+
+    mockedGetSuccessfulWindowsForCoverage.mockResolvedValue([]);
+    mockedFetchPandaScoreMatches.mockResolvedValue([
+      buildRawMatch({
+        id: 16,
+        begin_at: "2026-05-18T12:00:00.000Z",
+        status: "finished",
+        name: "Whole Range Match"
+      })
+    ]);
+    mockedQueryMatchesByDateRange.mockResolvedValue([
+      buildMatch({
+        id: 16,
+        begin_at: "2026-05-18T12:00:00.000Z",
+        status: "finished",
+        name: "Whole Range Match"
+      })
+    ]);
+
+    const response = await getMatches(
+      buildQuery({
+        from,
+        to,
+        refresh: false
+      })
+    );
+
+    expect(response.total).toBe(1);
+    expect(mockedFetchPandaScoreMatches).toHaveBeenCalledTimes(1);
+    expect(mockedFetchPandaScoreMatches).toHaveBeenCalledWith(
+      "lol",
+      getBeijingDateRangeUtc(from, to),
+      expect.objectContaining({
+        statuses: ["finished"]
+      })
+    );
+    expect(mockedQueryMatchesByDateRange).toHaveBeenCalledTimes(1);
+    expect(mockedUpsertSuccessWindow).toHaveBeenCalledTimes(7);
+    expect(mockedCreateSyncRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("writes a successful window even when a missing gap has no matches", async () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+
+    const from = "2026-05-25";
+    const to = "2026-05-28";
+
+    mockedGetSuccessfulWindowsForCoverage.mockResolvedValue([
+      buildFreshWindow({
+        from_date: "2026-05-26",
+        to_date: "2026-05-28",
+        status_group: "results_finished"
+      })
+    ]);
+    mockedFetchPandaScoreMatches.mockResolvedValue([]);
+    mockedQueryMatchesByDateRange.mockResolvedValue([]);
+
+    const response = await getMatches(
+      buildQuery({
+        from,
+        to,
+        refresh: false
+      })
+    );
+
+    expect(response.total).toBe(0);
+    expect(response.matches).toEqual([]);
+    expect(mockedFetchPandaScoreMatches).toHaveBeenCalledTimes(1);
+    expect(mockedFetchPandaScoreMatches).toHaveBeenCalledWith(
+      "lol",
+      getBeijingDateRangeUtc("2026-05-25", "2026-05-25"),
+      expect.objectContaining({
+        statuses: ["finished"]
+      })
+    );
+    expect(mockedQueryMatchesByDateRange).toHaveBeenCalledTimes(1);
+    expect(mockedUpsertSuccessWindow).toHaveBeenCalledTimes(1);
+    expect(mockedUpsertSuccessWindow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from_date: "2026-05-25",
+        to_date: "2026-05-25",
+        status_group: "finished"
+      })
+    );
+  });
+
+  it("keeps finished historical source windows fresher than running ones", async () => {
+    const today = getBeijingTodayDate();
+    const historicalTtl = getSourceWindowTtlSeconds(
+      buildQuery({ from: addBeijingDays(today, -7), to: addBeijingDays(today, -1), refresh: false })
+    );
+    const runningTtl = getSourceWindowTtlSeconds(
+      buildQuery({ view: "schedule", status: "running", from: today, to: today })
+    );
+
+    expect(historicalTtl).toBeGreaterThan(runningTtl);
+    expect(historicalTtl).toBe(30 * 24 * 60 * 60);
+    expect(runningTtl).toBe(5 * 60);
+  });
+
   it("uses a fresh Supabase window without calling PandaScore", async () => {
     process.env.SUPABASE_URL = "https://example.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
@@ -259,7 +681,62 @@ describe("matchService supabase flow", () => {
         game: "lol",
         from_date: "2026-06-01",
         to_date: "2026-06-07",
-        status_group: "results_finished"
+        status_group: "finished"
+      })
+    );
+    expect(mockedGetSuccessfulWindowsForCoverage).not.toHaveBeenCalled();
+    expect(mockedQueryMatchesByDateRange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "pandascore",
+        game: "lol",
+        fromDate: "2026-06-01",
+        toDate: "2026-06-07",
+        statuses: ["finished"]
+      })
+    );
+  });
+
+  it("keeps running queries on the existing fresh-window path", async () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+
+    const match = buildMatch({
+      id: 15,
+      begin_at: "2026-06-01T12:00:00.000Z",
+      status: "running",
+      name: "Running Match"
+    });
+
+    mockedGetFreshWindow.mockResolvedValue(
+      buildFreshWindow({
+        from_date: "2026-06-01",
+        to_date: "2026-06-07",
+        status_group: "schedule_running"
+      })
+    );
+    mockedQueryMatchesByDateRange.mockResolvedValue([match]);
+
+    const response = await getMatches(
+      buildQuery({
+        view: "schedule",
+        status: "running"
+      })
+    );
+
+    expect(response.total).toBe(1);
+    expect(response.matches[0]).toMatchObject({
+      id: "15",
+      status: "running"
+    });
+    expect(mockedGetSuccessfulWindowsForCoverage).not.toHaveBeenCalled();
+    expect(mockedFetchPandaScoreMatches).not.toHaveBeenCalled();
+    expect(mockedGetFreshWindow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "pandascore",
+        game: "lol",
+        from_date: "2026-06-01",
+        to_date: "2026-06-07",
+        status_group: "schedule_running"
       })
     );
     expect(mockedQueryMatchesByDateRange).toHaveBeenCalledWith(
@@ -268,7 +745,7 @@ describe("matchService supabase flow", () => {
         game: "lol",
         fromDate: "2026-06-01",
         toDate: "2026-06-07",
-        statuses: ["finished"]
+        statuses: ["not_started", "running"]
       })
     );
   });
@@ -285,16 +762,42 @@ describe("matchService supabase flow", () => {
         name: "Refreshed Match"
       })
     ]);
+    mockedGetSuccessfulWindowsForCoverage.mockResolvedValue([
+      buildFreshWindow({
+        from_date: "2026-05-01",
+        to_date: "2026-05-07",
+        status_group: "finished"
+      })
+    ]);
 
     const response = await getMatches(buildQuery({ refresh: true }));
 
     expect(response.total).toBe(1);
+    expect(mockedQueryMatchesByDateRange).not.toHaveBeenCalled();
+    expect(mockedGetSuccessfulWindowsForCoverage).not.toHaveBeenCalled();
     expect(mockedGetFreshWindow).not.toHaveBeenCalled();
     expect(mockedFetchPandaScoreMatches).toHaveBeenCalledTimes(1);
+    expect(mockedFetchPandaScoreMatches).toHaveBeenCalledWith(
+      "lol",
+      getBeijingDateRangeUtc("2026-06-01", "2026-06-07"),
+      expect.objectContaining({
+        statuses: ["finished"]
+      })
+    );
     expect(mockedCreateSyncRun).toHaveBeenCalledTimes(1);
     expect(mockedUpsertMatches).toHaveBeenCalledTimes(1);
     expect(mockedUpsertSuccessWindow).toHaveBeenCalledTimes(1);
     expect(mockedFinishSyncRunSuccess).toHaveBeenCalledTimes(1);
+    expect(mockedCreateSyncRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status_group: "finished"
+      })
+    );
+    expect(mockedUpsertSuccessWindow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status_group: "finished"
+      })
+    );
   });
 
   it("returns partial results when one game fails in game=all", async () => {
@@ -460,6 +963,7 @@ describe("matchService supabase flow", () => {
     expect(response.total).toBe(1);
     expect(mockedFetchPandaScoreMatches).toHaveBeenCalledTimes(1);
     expect(mockedGetFreshWindow).not.toHaveBeenCalled();
+    expect(mockedGetSuccessfulWindowsForCoverage).not.toHaveBeenCalled();
     expect(mockedCreateSyncRun).not.toHaveBeenCalled();
     expect(mockedUpsertMatches).not.toHaveBeenCalled();
   });

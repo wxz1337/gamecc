@@ -7,21 +7,19 @@ export function LoadingState() {
   return (
     <div className="grid gap-3">
       {Array.from({ length: 4 }, (_, index) => (
-        <Card className="p-4" key={index}>
-          <div className="flex gap-4">
-            <div className="w-16 shrink-0 space-y-2">
-              <Skeleton className="h-5 w-14" />
+        <Card className="p-4 shadow-none sm:p-5" key={index}>
+          <div className="grid gap-3 sm:grid-cols-[76px_minmax(0,1fr)]">
+            <div className="space-y-2">
               <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-10" />
             </div>
-            <div className="min-w-0 flex-1 space-y-4">
-              <div className="flex gap-2">
-                <Skeleton className="h-6 w-16 rounded-full" />
-                <Skeleton className="h-6 w-20 rounded-full" />
-              </div>
+            <div className="min-w-0 space-y-2">
+              <Skeleton className="h-4 w-40" />
               <Skeleton className="h-5 w-2/3" />
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Skeleton className="h-14" />
-                <Skeleton className="h-14" />
+              <Skeleton className="h-4 w-56" />
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-20 rounded-full" />
               </div>
             </div>
           </div>
@@ -33,13 +31,13 @@ export function LoadingState() {
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <Card className="grid place-items-center gap-4 border-rose-200 bg-rose-50/70 p-8 text-center">
-      <div className="grid size-11 place-items-center rounded-full bg-white text-rose-600 shadow-sm">
+    <Card className="grid place-items-center gap-4 border-rose-200 bg-rose-50 p-8 text-center shadow-none">
+      <div className="grid size-12 place-items-center rounded-2xl bg-white text-rose-600 shadow-sm ring-1 ring-rose-200">
         <AlertCircle className="size-5" />
       </div>
       <div>
-        <p className="text-base font-semibold text-zinc-950">赛程数据暂时获取失败</p>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-600">{message}</p>
+        <p className="text-base font-bold text-slate-950">赛程数据暂时获取失败</p>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">{message}</p>
       </div>
       <Button onClick={onRetry} type="button">
         <RefreshCw className="size-4" />
@@ -51,12 +49,12 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry: () 
 
 export function EmptyState({ message }: { message: string }) {
   return (
-    <Card className="grid place-items-center gap-3 border-dashed p-10 text-center">
-      <div className="grid size-11 place-items-center rounded-full bg-zinc-100 text-zinc-500">
+    <Card className="grid place-items-center gap-3 border-dashed border-stone-300 bg-white/70 p-10 text-center shadow-none">
+      <div className="grid size-12 place-items-center rounded-2xl bg-stone-100 text-slate-500 ring-1 ring-stone-200">
         <CalendarX2 className="size-5" />
       </div>
-      <p className="text-base font-semibold text-zinc-950">暂无比赛</p>
-      <p className="max-w-xl text-sm leading-6 text-zinc-600">{message}</p>
+      <p className="text-base font-bold text-slate-950">暂无比赛</p>
+      <p className="max-w-xl text-sm leading-6 text-slate-600">{message}</p>
     </Card>
   );
 }

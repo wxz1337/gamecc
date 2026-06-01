@@ -103,33 +103,31 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
   let previousDate = "";
 
   return (
-    <motion.div className="timeline-list grid gap-3" ref={containerRef}>
+    <motion.div className="timeline-list relative z-0 grid gap-3" ref={containerRef}>
       <div aria-hidden ref={topSentinelRef} />
       {matches.map((match) => {
         const shouldShowDate = match.displayDate !== previousDate;
         previousDate = match.displayDate;
+        const enteringIndex = enteringMatchIndexMap.get(match.id);
+        const enterDelay = enteringIndex != null ? (enteringIndex < 6 ? enteringIndex * 0.025 : 0) : 0;
 
         return (
           <div key={match.id}>
             {shouldShowDate ? (
-              <div className="sticky top-0 z-10 -mx-1 mb-3 rounded-md border border-zinc-200 bg-[#f6f5f2]/95 px-3 py-2 text-sm font-semibold text-zinc-700 backdrop-blur">
+              <div className="sticky top-2 z-20 -mx-1 mb-3 w-max rounded-full border border-stone-200 bg-white/92 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm shadow-stone-900/10 backdrop-blur-sm">
                 {match.displayDate}
               </div>
             ) : null}
             <motion.div
-              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+              animate={{ opacity: 1, y: 0 }}
               data-match-date={match.displayDate}
               data-match-id={match.id}
-              initial={
-                enteringMatchIndexMap.has(match.id)
-                  ? { opacity: 0, y: 14, scale: 0.992, filter: "blur(2px)" }
-                  : false
-              }
+              initial={enteringIndex != null ? { opacity: 0, y: 10 } : false}
               layout="position"
               transition={{
-                duration: 0.22,
+                duration: 0.18,
                 ease: [0.22, 1, 0.36, 1],
-                delay: enteringMatchIndexMap.has(match.id) ? Math.min((enteringMatchIndexMap.get(match.id) ?? 0) * 0.035, 0.18) : 0
+                delay: enterDelay
               }}
             >
               <MatchCard match={match} />
@@ -140,21 +138,21 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
       {isLoadingMore ? (
         <motion.div
           animate={{ opacity: 1, y: 0 }}
-          className="grid gap-3"
+          className="grid gap-2"
           initial={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
         >
           {Array.from({ length: 3 }).map((_, skeletonIndex) => (
-            <div className="rounded-xl border border-zinc-200 bg-white/80 p-4" key={`load-more-skeleton-${skeletonIndex}`}>
-              <div className="grid gap-3 sm:grid-cols-[120px_minmax(0,1fr)]">
+            <div className="rounded-2xl border border-stone-200 bg-white/80 p-4 sm:p-5" key={`load-more-skeleton-${skeletonIndex}`}>
+              <div className="grid gap-3 sm:grid-cols-[76px_minmax(0,1fr)]">
                 <div className="space-y-2">
-                  <div className="h-4 w-20 animate-pulse rounded bg-zinc-200/80" />
-                  <div className="h-4 w-14 animate-pulse rounded bg-zinc-200/70" />
+                  <div className="h-4 w-12 animate-pulse rounded bg-stone-200/80" />
+                  <div className="h-4 w-10 animate-pulse rounded bg-stone-200/70" />
                 </div>
                 <div className="space-y-2">
-                  <div className="h-5 w-2/3 animate-pulse rounded bg-zinc-200/80" />
-                  <div className="h-4 w-1/2 animate-pulse rounded bg-zinc-200/70" />
-                  <div className="h-4 w-5/6 animate-pulse rounded bg-zinc-200/70" />
+                  <div className="h-4 w-40 animate-pulse rounded bg-stone-200/80" />
+                  <div className="h-5 w-2/3 animate-pulse rounded bg-stone-200/70" />
+                  <div className="h-4 w-56 animate-pulse rounded bg-stone-200/70" />
                 </div>
               </div>
             </div>

@@ -1,22 +1,79 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, ExternalLink, Info, Link2, Map, Trophy } from "lucide-react";
-import type { Match } from "../../shared/match";
-import { GAME_LABELS, STATUS_LABELS } from "../constants/matches";
-import { formatDateTime, formatDuration, formatTeams, formatTournamentMeta, getTeamScore, getWinnerLabel } from "../utils/matchFormatters";
+import { ChevronDown, ExternalLink, Link2, Map, Trophy } from "lucide-react";
+import type { Match, Team } from "../../shared/match";
+import { GAME_LABELS } from "../constants/matches";
+import { formatDateTime, formatDuration, formatTournamentMeta, getTeamScore, getWinnerLabel } from "../utils/matchFormatters";
 import { StatusBadge } from "./StatusBadge";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { cn } from "../lib/utils";
 
+function TeamLogo({ team }: { team?: Team | null }) {
+  const logo = team?.darkModeImageUrl || team?.imageUrl;
+  const label = (team?.acronym || team?.name || "TBD").trim();
+  const fallback = label.slice(0, 3).toUpperCase() || "TBD";
+
+  if (logo) {
+    return (
+      <img
+        alt=""
+        className="size-10 shrink-0 rounded-xl border border-stone-200 bg-white object-contain p-1 sm:size-11"
+        src={logo}
+        title={label}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="font-display grid size-10 shrink-0 place-items-center rounded-xl border border-stone-200 bg-stone-50 text-[11px] font-bold uppercase tracking-wide text-slate-700 sm:size-11"
+      title={label}
+    >
+      {fallback}
+    </span>
+  );
+}
+
+function TeamRow({
+  team,
+  align = "left",
+  winner = false
+}: {
+  team?: Team | null;
+  align?: "left" | "right";
+  winner?: boolean;
+}) {
+  const label = team?.acronym || team?.name || "TBD";
+  const isRight = align === "right";
+
+  return (
+    <div className={cn("flex min-w-0 items-center gap-3", isRight && "justify-end text-right")}>
+      {isRight ? null : <TeamLogo team={team} />}
+      <div className={cn("min-w-0", isRight && "order-first")}>
+        <span
+          className={cn(
+            "block truncate text-base font-extrabold leading-tight tracking-tight text-slate-950 sm:text-lg",
+            winner && "text-amber-700"
+          )}
+        >
+          {label}
+        </span>
+      </div>
+      {isRight ? <TeamLogo team={team} /> : null}
+    </div>
+  );
+}
+
 export function MatchCard({ match }: { match: Match }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const gameLabel = GAME_LABELS[match.game];
-  const teams = formatTeams(match);
-  const winnerLabel = getWinnerLabel(match);
   const tournamentMeta = formatTournamentMeta(match);
-  const statusLabel = STATUS_LABELS[match.status];
+  const leftTeam = match.teams[0];
+  const rightTeam = match.teams[1];
+  const leftScore = leftTeam ? getTeamScore(match, leftTeam.id) : null;
+  const rightScore = rightTeam ? getTeamScore(match, rightTeam.id) : null;
   const visibleGames = match.games?.filter((game) => game.position != null).slice(0, 5) ?? [];
   const scheduleMeta = [
     match.displayEndTime ? `结束 ${match.displayEndTime}` : null,
@@ -25,81 +82,133 @@ export function MatchCard({ match }: { match: Match }) {
     match.detailedStatsAvailable ? "赛后统计" : null
   ].filter((item): item is string => Boolean(item));
   const detailTimestamp = formatDateTime(match.updatedAt);
+  const subline = [match.league, match.serie, match.stage].filter(Boolean).join(" · ");
+  const scoreText = match.status === "not_started" || leftScore == null || rightScore == null ? "VS" : `${leftScore} : ${rightScore}`;
+  const leftWinner = match.status === "finished" && match.winnerTeamId === leftTeam?.id;
+  const rightWinner = match.status === "finished" && match.winnerTeamId === rightTeam?.id;
+  const winnerText = match.draw ? "平局" : getWinnerLabel(match) ?? "未确定";
 
   return (
-    <Card className="overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md">
-      <div className="grid gap-4 p-4 sm:grid-cols-[76px_minmax(0,1fr)] sm:p-5">
-        <div className="flex items-baseline justify-between gap-3 sm:block">
-          <p className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-zinc-950">{match.displayTime}</p>
-          <p className="mt-1 text-xs font-medium text-zinc-500">{match.displayDate}</p>
-        </div>
+    <Card className="overflow-hidden rounded-2xl border-stone-200 transition-[border-color,box-shadow] duration-200 hover:border-stone-300 hover:shadow-[0_12px_28px_rgba(94,71,38,0.1)]">
+      <div className="relative">
+        <Button
+          aria-expanded={isExpanded}
+          aria-label="切换比赛详情"
+          className="absolute right-2.5 top-2.5 z-20 size-9 text-slate-500 hover:text-slate-950"
+          onClick={() => setIsExpanded((current) => !current)}
+          type="button"
+          variant="ghost"
+        >
+          <ChevronDown className={cn("size-4 transition-transform", isExpanded && "rotate-180")} />
+        </Button>
 
-        <div className="min-w-0 space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="dark">{gameLabel}</Badge>
-            <StatusBadge status={match.status} />
-            {match.bestOf ? <Badge tone="amber">BO{match.bestOf}</Badge> : null}
-            {match.tournamentTier ? <Badge tone="neutral">{match.tournamentTier}级</Badge> : null}
-            <Button
-              className="ml-auto h-8 px-2.5"
-              onClick={() => setIsExpanded((current) => !current)}
-              type="button"
-              variant="ghost"
-            >
-              <Info className="size-4" />
-              详情
-              <ChevronDown className={cn("size-4 transition-transform", isExpanded && "rotate-180")} />
-            </Button>
-          </div>
-
-          <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold tracking-tight text-zinc-950">{match.tournament}</h3>
-            <p className="mt-1 truncate text-sm text-zinc-500">
-              {[match.league, match.serie, match.stage, match.name].filter(Boolean).join(" · ")}
-            </p>
-          </div>
-
-          <div className="grid gap-2 md:grid-cols-2" aria-label={teams}>
-            {match.teams.map((team, index) => {
-              const score = getTeamScore(match, team.id);
-              const isWinner = team.id != null && match.winnerTeamId === team.id;
-              const logo = team.darkModeImageUrl || team.imageUrl;
-
-              return (
-                <div
-                  className={cn(
-                    "grid min-h-16 grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border p-3",
-                    isWinner ? "border-amber-200 bg-amber-50" : "border-zinc-200 bg-zinc-50/70"
-                  )}
-                  key={`${match.id}-${team.id ?? index}`}
-                >
-                  {logo ? (
-                    <img alt="" className="size-10 rounded-full bg-white object-contain p-1 ring-1 ring-zinc-200" src={logo} />
-                  ) : (
-                    <span className="grid size-10 place-items-center rounded-full bg-white text-xs font-semibold text-zinc-400 ring-1 ring-zinc-200">
-                      TBD
-                    </span>
-                  )}
-                  <div className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-zinc-950">{team.acronym || team.name}</span>
-                    {team.location ? <span className="block truncate text-xs text-zinc-500">{team.location}</span> : null}
-                  </div>
-                  <strong className="min-w-8 text-right text-2xl font-semibold tabular-nums text-zinc-950">{score ?? "-"}</strong>
-                </div>
-              );
-            })}
-          </div>
-
-          {winnerLabel || scheduleMeta.length > 0 || tournamentMeta.length > 0 || visibleGames.length > 0 ? (
-            <div className="space-y-3">
-              {winnerLabel ? (
-                <p className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-700">
-                  <Trophy className="size-4" />
-                  胜者：{winnerLabel}
+        <div className="p-3 pr-12 sm:p-4 sm:pr-14">
+          <div className="grid gap-3 lg:grid-cols-[112px_minmax(0,1fr)] lg:items-start">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-slate-50 px-3 py-2.5 lg:block">
+              <div>
+                <p className="font-display text-[22px] font-bold leading-none tabular-nums tracking-tight text-slate-950 sm:text-[23px]">
+                  {match.displayTime}
                 </p>
+                <p className="mt-1.5 text-xs font-semibold text-slate-500">{match.displayDate}</p>
+              </div>
+            </div>
+
+            <div className="min-w-0 space-y-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5 pr-8">
+                <Badge tone="dark">{gameLabel}</Badge>
+                <StatusBadge status={match.status} />
+                {match.bestOf ? <Badge tone="neutral">BO{match.bestOf}</Badge> : null}
+                <h3 className="min-w-0 truncate text-sm font-semibold tracking-tight text-slate-800">{match.tournament}</h3>
+              </div>
+
+              <div className="grid items-center gap-3 rounded-2xl border border-stone-200 bg-white px-3 py-2.5 shadow-sm shadow-stone-900/[0.03] sm:grid-cols-[minmax(0,1fr)_88px_minmax(0,1fr)] sm:items-center">
+                <TeamRow team={leftTeam} winner={leftWinner} />
+
+                <div className="text-center">
+                  <div className="font-display rounded-xl border border-stone-200 bg-slate-50 px-3 py-2 text-[22px] font-bold leading-none tabular-nums tracking-tight text-slate-950">
+                    {scoreText}
+                  </div>
+                </div>
+
+                <TeamRow align="right" team={rightTeam} winner={rightWinner} />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="min-w-0 truncate text-slate-500">{subline || " "}</span>
+                {match.status === "finished" ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-amber-700">
+                    <Trophy className="size-3.5" />
+                    {match.draw ? "平局" : `胜者 ${winnerText}`}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {isExpanded ? (
+          <motion.div
+            animate={{ opacity: 1, height: "auto" }}
+            className="overflow-hidden"
+            exit={{ opacity: 0, height: 0 }}
+            initial={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+          >
+            <div className="space-y-4 border-t border-stone-200 bg-stone-50/70 p-4 sm:p-5">
+              {match.streamUrl || match.replayUrl ? (
+                <div className="flex flex-wrap gap-2">
+                  {match.streamUrl ? (
+                    <a
+                      className="inline-flex h-10 items-center gap-2 rounded-full bg-[#172033] px-4 text-sm font-bold text-white transition-colors hover:bg-[#273653]"
+                      href={match.streamUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <Link2 className="size-4" />
+                      直播链接
+                      <ExternalLink className="size-3.5" />
+                    </a>
+                  ) : null}
+                  {match.replayUrl ? (
+                    <a
+                      className="inline-flex h-10 items-center gap-2 rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-stone-50"
+                      href={match.replayUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <Link2 className="size-4" />
+                      回放链接
+                      <ExternalLink className="size-3.5" />
+                    </a>
+                  ) : null}
+                </div>
               ) : null}
 
-              {scheduleMeta.length > 0 || tournamentMeta.length > 0 ? (
+              {match.status === "finished" ? (
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                  <Trophy className="size-4 text-amber-700" />
+                  <span className="text-slate-700">赛果：</span>
+                  <span className="font-semibold text-slate-900">{winnerText}</span>
+                </div>
+              ) : null}
+
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {[
+                  ["开始时间", formatDateTime(match.beginAt)],
+                  ["结束时间", match.endAt ? formatDateTime(match.endAt) : "未结束"],
+                  ["数据来源", match.source],
+                  ["更新时间", detailTimestamp]
+                ].map(([label, value]) => (
+                  <div className="rounded-2xl border border-stone-200 bg-white p-3" key={label}>
+                    <span className="text-xs font-semibold text-slate-500">{label}</span>
+                    <strong className="mt-1 block truncate text-sm text-slate-950">{value}</strong>
+                  </div>
+                ))}
+              </div>
+
+              {tournamentMeta.length > 0 || scheduleMeta.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {[...scheduleMeta, ...tournamentMeta].map((item) => (
                     <Badge key={item} tone="neutral">
@@ -110,109 +219,31 @@ export function MatchCard({ match }: { match: Match }) {
               ) : null}
 
               {visibleGames.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="grid gap-2">
                   {visibleGames.map((singleGame) => {
                     const winner = match.teams.find((team) => team.id === singleGame.winnerTeamId);
-                    const duration = formatDuration(singleGame.lengthSeconds);
 
                     return (
-                      <Badge key={singleGame.id} tone="green">
-                        G{singleGame.position}
-                        {winner ? ` ${winner.acronym || winner.name}` : ""}
-                        {duration ? ` · ${duration}` : ""}
-                      </Badge>
+                      <div
+                        className="grid gap-2 rounded-2xl border border-stone-200 bg-white p-3 text-sm text-slate-600 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-center"
+                        key={singleGame.id}
+                      >
+                        <span className="inline-flex items-center gap-2 font-semibold text-slate-950">
+                          <Map className="size-4" />
+                          地图 / 小局 {singleGame.position}
+                        </span>
+                        <span>{singleGame.status}</span>
+                        <span>{winner ? `胜者 ${winner.acronym || winner.name}` : "胜者未知"}</span>
+                        <span>{singleGame.lengthSeconds ? formatDuration(singleGame.lengthSeconds) : "时长未知"}</span>
+                      </div>
                     );
                   })}
                 </div>
               ) : null}
             </div>
-          ) : null}
-
-          <AnimatePresence initial={false}>
-            {isExpanded ? (
-              <motion.div
-                animate={{ opacity: 1, height: "auto" }}
-                className="overflow-hidden"
-                exit={{ opacity: 0, height: 0 }}
-                initial={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-              >
-                <div className="space-y-4 border-t border-zinc-200 pt-4">
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                    {[
-                      ["开始时间", formatDateTime(match.beginAt)],
-                      ["结束时间", match.endAt ? formatDateTime(match.endAt) : "未结束"],
-                      ["数据来源", match.source],
-                      ["更新时间", detailTimestamp],
-                      ["赛制", match.bestOf ? `BO${match.bestOf}` : "未知"],
-                      ["胜者", winnerLabel ?? "暂无"],
-                      ["总比分", match.score?.length ? match.score.map((item) => item.score).join(" : ") : "暂无"],
-                      ["状态", statusLabel]
-                    ].map(([label, value]) => (
-                      <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3" key={label}>
-                        <span className="text-xs font-medium text-zinc-500">{label}</span>
-                        <strong className="mt-1 block truncate text-sm text-zinc-950">{value}</strong>
-                      </div>
-                    ))}
-                  </div>
-
-                  {match.streamUrl || match.replayUrl ? (
-                    <div className="flex flex-wrap gap-2">
-                      {match.streamUrl ? (
-                        <a
-                          className="inline-flex h-9 items-center gap-2 rounded-md bg-zinc-950 px-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
-                          href={match.streamUrl}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          <Link2 className="size-4" />
-                          直播链接
-                          <ExternalLink className="size-3.5" />
-                        </a>
-                      ) : null}
-                      {match.replayUrl ? (
-                        <a
-                          className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
-                          href={match.replayUrl}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          <Link2 className="size-4" />
-                          回放链接
-                          <ExternalLink className="size-3.5" />
-                        </a>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  {visibleGames.length > 0 ? (
-                    <div className="grid gap-2">
-                      {visibleGames.map((singleGame) => {
-                        const winner = match.teams.find((team) => team.id === singleGame.winnerTeamId);
-
-                        return (
-                          <div
-                            className="grid gap-2 rounded-lg border border-zinc-200 bg-white p-3 text-sm text-zinc-600 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-center"
-                            key={singleGame.id}
-                          >
-                            <span className="inline-flex items-center gap-2 font-medium text-zinc-950">
-                              <Map className="size-4" />
-                              地图 / 小局 {singleGame.position}
-                            </span>
-                            <span>{singleGame.status}</span>
-                            <span>{winner ? `胜者 ${winner.acronym || winner.name}` : "胜者未知"}</span>
-                            <span>{singleGame.lengthSeconds ? formatDuration(singleGame.lengthSeconds) : "时长未知"}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-        </div>
-      </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </Card>
   );
 }

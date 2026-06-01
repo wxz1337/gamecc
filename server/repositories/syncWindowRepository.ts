@@ -107,6 +107,61 @@ export async function getFreshWindow(key: SyncWindowKey, now = new Date()): Prom
   return data as SyncWindowRow;
 }
 
+export async function getSuccessfulWindow(key: SyncWindowKey): Promise<SyncWindowRecord | null> {
+  const client = getSupabaseOrThrow();
+  const { data, error } = await client
+    .from("match_fetch_windows")
+    .select(SYNC_WINDOW_SELECT_COLUMNS)
+    .eq("source", key.source)
+    .eq("game", key.game)
+    .eq("from_date", key.from_date)
+    .eq("to_date", key.to_date)
+    .eq("status_group", key.status_group)
+    .not("last_synced_at", "is", null)
+    .maybeSingle();
+
+  if (error) {
+    throw toSupabaseAppError(error, "赛程窗口查询失败。");
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return data as SyncWindowRow;
+}
+
+export type SyncWindowCoverageQuery = Pick<SyncWindowKey, "source" | "game" | "from_date" | "to_date"> & {
+  status_groups: string[];
+};
+
+export async function getSuccessfulWindowsForCoverage(
+  input: SyncWindowCoverageQuery
+): Promise<SyncWindowRecord[]> {
+  if (input.status_groups.length === 0) {
+    return [];
+  }
+
+  const client = getSupabaseOrThrow();
+  const { data, error } = await client
+    .from("match_fetch_windows")
+    .select(SYNC_WINDOW_SELECT_COLUMNS)
+    .eq("source", input.source)
+    .eq("game", input.game)
+    .in("status_group", input.status_groups)
+    .not("last_synced_at", "is", null)
+    .lte("from_date", input.to_date)
+    .gte("to_date", input.from_date)
+    .order("from_date", { ascending: true })
+    .order("to_date", { ascending: true });
+
+  if (error) {
+    throw toSupabaseAppError(error, "赛程窗口查询失败。");
+  }
+
+  return (data ?? []) as SyncWindowRow[];
+}
+
 export async function upsertSuccessWindow(input: SyncWindowSuccessInput): Promise<SyncWindowRecord> {
   const client = getSupabaseOrThrow();
   const payload = buildSuccessWindowPayload(input);

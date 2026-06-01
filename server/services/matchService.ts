@@ -1,4 +1,10 @@
-import { addBeijingDays, formatBeijingDateTime, getBeijingDateRangeUtc } from "../../shared/date.js";
+import {
+  addBeijingDays,
+  formatBeijingDateTime,
+  getBeijingDateRangeUtc,
+  getBeijingTodayDate,
+  getDateSpanDays
+} from "../../shared/date.js";
 import { ERROR_CODES, isAppError } from "../../shared/errors.js";
 import {
   GameFilter,
@@ -16,7 +22,12 @@ import { mapPandaScoreMatch } from "../mappers/pandascoreMapper.js";
 import { PandaScoreMatch } from "../types/pandascore.js";
 import { buildResponseCacheKey, buildSourceWindowCacheKey, getAny, getFresh, set } from "./cacheService.js";
 import { createSyncRun, finishSyncRunFailure, finishSyncRunSuccess } from "../repositories/syncRunRepository.js";
-import { getFreshWindow, upsertFailedWindow, upsertSuccessWindow } from "../repositories/syncWindowRepository.js";
+import {
+  getFreshWindow,
+  getSuccessfulWindowsForCoverage,
+  upsertFailedWindow,
+  upsertSuccessWindow
+} from "../repositories/syncWindowRepository.js";
 import { queryMatchesByDateRange, upsertMatches } from "../repositories/matchRepository.js";
 import { isSupabaseConfigured } from "./supabaseClient.js";
 import { runWithInFlightDeduplication } from "./inFlightRequestService.js";
@@ -343,7 +354,164 @@ function getStatusGroup(query: MatchQuery): string {
     return "all";
   }
 
+  if (query.status === "finished") {
+    return "finished";
+  }
+
   return `${query.view}_${query.status}`;
+}
+
+type CoverageWindow = {
+  from_date: string;
+  to_date: string;
+};
+
+type DateRange = {
+  fromDate: string;
+  toDate: string;
+};
+
+const FINISHED_COVERAGE_STATUS_GROUPS = ["finished", "schedule_finished", "results_finished"] as const;
+
+export function areWindowsCoveringDateRange(windows: CoverageWindow[], fromDate: string, toDate: string): boolean {
+  return getMissingDateRanges(windows, fromDate, toDate).length === 0;
+}
+
+export function getMissingDateRanges(windows: CoverageWindow[], fromDate: string, toDate: string): DateRange[] {
+  if (fromDate > toDate) {
+    return [];
+  }
+
+  const missingRanges: DateRange[] = [];
+  let nextRequiredDate = fromDate;
+
+  for (const window of [...windows].sort((left, right) => {
+    const fromDiff = left.from_date.localeCompare(right.from_date);
+
+    if (fromDiff !== 0) {
+      return fromDiff;
+    }
+
+    return left.to_date.localeCompare(right.to_date);
+  })) {
+    if (window.to_date < nextRequiredDate) {
+      continue;
+    }
+
+    if (window.from_date > toDate) {
+      break;
+    }
+
+    if (window.from_date > nextRequiredDate) {
+      missingRanges.push({
+        fromDate: nextRequiredDate,
+        toDate: addBeijingDays(window.from_date, -1)
+      });
+    }
+
+    nextRequiredDate = addBeijingDays(window.to_date, 1);
+
+    if (nextRequiredDate > toDate) {
+      return missingRanges;
+    }
+  }
+
+  if (nextRequiredDate <= toDate) {
+    missingRanges.push({
+      fromDate: nextRequiredDate,
+      toDate
+    });
+  }
+
+  return missingRanges;
+}
+
+function expandDateRangeToDailyRanges(range: DateRange): DateRange[] {
+  const ranges: DateRange[] = [];
+  let current = range.fromDate;
+
+  while (current <= range.toDate) {
+    ranges.push({
+      fromDate: current,
+      toDate: current
+    });
+    current = addBeijingDays(current, 1);
+  }
+
+  return ranges;
+}
+
+function getFinishedCoverageStatusGroups(): readonly string[] {
+  return FINISHED_COVERAGE_STATUS_GROUPS;
+}
+
+async function fetchAndPersistMissingFinishedRange(
+  query: MatchQuery,
+  game: GameType,
+  range: DateRange
+): Promise<void> {
+  const sourceWindowKey = buildSourceWindowCacheKey({
+    game,
+    from: range.fromDate,
+    to: range.toDate,
+    statusGroup: "finished"
+  });
+
+  await runWithInFlightDeduplication(sourceWindowKey, async () => {
+    const syncRun = await createSyncRun({
+      source: "pandascore",
+      game,
+      from_date: range.fromDate,
+      to_date: range.toDate,
+      status_group: "finished"
+    });
+
+    try {
+      const pandaScoreRange = getBeijingDateRangeUtc(range.fromDate, range.toDate);
+      const pandaScoreStatuses = getPandaScoreStatuses(query);
+      const rawMatches = await fetchPandaScoreMatches(game, pandaScoreRange, { statuses: pandaScoreStatuses });
+      const matches = mapRawMatches(game, rawMatches);
+      const dailyRanges = expandDateRangeToDailyRanges(range);
+
+      await upsertMatches(matches);
+      await Promise.all(
+        dailyRanges.map((dailyRange) =>
+          upsertSuccessWindow({
+            source: "pandascore",
+            game,
+            from_date: dailyRange.fromDate,
+            to_date: dailyRange.toDate,
+            status_group: "finished",
+            ttlSeconds: getSourceWindowTtlSeconds(query)
+          })
+        )
+      );
+      await finishSyncRunSuccess({
+        id: syncRun.id,
+        fetchedCount: rawMatches.length,
+        upsertedCount: matches.length
+      });
+    } catch (error) {
+      await Promise.allSettled([
+        finishSyncRunFailure({
+          id: syncRun.id,
+          errorCode: isAppError(error) ? error.code : "PANDASCORE_REQUEST_FAILED",
+          errorMessage: error instanceof Error ? error.message : "赛程数据暂时获取失败，请稍后重试。"
+        }),
+        upsertFailedWindow({
+          source: "pandascore",
+          game,
+          from_date: range.fromDate,
+          to_date: range.toDate,
+          status_group: "finished",
+          errorCode: isAppError(error) ? error.code : "PANDASCORE_REQUEST_FAILED",
+          errorMessage: error instanceof Error ? error.message : "赛程数据暂时获取失败，请稍后重试。"
+        })
+      ]);
+
+      throw error;
+    }
+  });
 }
 
 function applyFilters(matches: Match[], query: MatchQuery): Match[] {
@@ -395,14 +563,44 @@ function buildGameWarning(game: GameType, error: unknown): NonNullable<MatchesRe
   };
 }
 
-function getSourceWindowTtlSeconds(): number {
-  const rawValue = Number(process.env.SOURCE_WINDOW_TTL_SECONDS ?? 900);
+function canUseFinalizedDbCache(query: MatchQuery): boolean {
+  const today = getBeijingTodayDate();
 
-  if (!Number.isFinite(rawValue) || rawValue <= 0) {
-    return 900;
+  return !query.refresh && query.status === "finished" && query.to < today;
+}
+
+export function getSourceWindowTtlSeconds(query: MatchQuery): number {
+  const today = getBeijingTodayDate();
+
+  if (query.status === "finished") {
+    return query.to < today ? 30 * 24 * 60 * 60 : 30 * 60;
   }
 
-  return Math.trunc(rawValue);
+  if (query.status === "running") {
+    return query.view === "schedule" ? 5 * 60 : 60;
+  }
+
+  if (query.status === "not_started") {
+    const spanDays = getDateSpanDays(query.from, query.to);
+
+    if (query.from > today) {
+      if (spanDays >= 7) {
+        return 6 * 60 * 60;
+      }
+
+      if (spanDays >= 3) {
+        return 2 * 60 * 60;
+      }
+    }
+
+    return 30 * 60;
+  }
+
+  if (query.status === "all") {
+    return 10 * 60;
+  }
+
+  return 10 * 60;
 }
 
 function mapRawMatches(game: GameType, rawMatches: PandaScoreMatch[]): Match[] {
@@ -434,6 +632,36 @@ async function resolveGameWithSupabase(
     const statusGroup = getStatusGroup(query);
     const fromDate = query.from;
     const toDate = query.to;
+
+    if (canUseFinalizedDbCache(query)) {
+      const successfulWindows = await getSuccessfulWindowsForCoverage({
+        source: "pandascore",
+        game,
+        from_date: fromDate,
+        to_date: toDate,
+        status_groups: [...getFinishedCoverageStatusGroups()]
+      });
+
+      const missingRanges = getMissingDateRanges(successfulWindows, fromDate, toDate);
+
+      for (const missingRange of missingRanges) {
+        await fetchAndPersistMissingFinishedRange(query, game, missingRange);
+      }
+
+      const finalizedMatches = await queryMatchesByDateRange({
+        source: "pandascore",
+        game,
+        fromDate,
+        toDate,
+        statuses: pandaScoreStatuses
+      });
+
+      return {
+        game,
+        matches: finalizedMatches,
+        stale: false
+      };
+    }
 
     if (!query.refresh) {
       const freshWindow = await getFreshWindow({
@@ -488,7 +716,7 @@ async function resolveGameWithSupabase(
           from_date: fromDate,
           to_date: toDate,
           status_group: statusGroup,
-          ttlSeconds: getSourceWindowTtlSeconds()
+          ttlSeconds: getSourceWindowTtlSeconds(query)
         });
         await finishSyncRunSuccess({
           id: syncRun.id,

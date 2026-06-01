@@ -6,19 +6,19 @@ export type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
 };
 
 const tones: Record<NonNullable<BadgeProps["tone"]>, string> = {
-  neutral: "bg-zinc-100 text-zinc-600 ring-zinc-200",
+  neutral: "bg-white/80 text-slate-600 ring-stone-200",
   green: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  amber: "bg-amber-50 text-amber-700 ring-amber-200",
+  amber: "bg-amber-50 text-amber-800 ring-amber-200",
   red: "bg-rose-50 text-rose-700 ring-rose-200",
-  blue: "bg-sky-50 text-sky-700 ring-sky-200",
-  dark: "bg-zinc-950 text-white ring-zinc-950"
+  blue: "bg-cyan-50 text-cyan-800 ring-cyan-200",
+  dark: "bg-slate-900 text-white ring-slate-900"
 };
 
 export function Badge({ className, tone = "neutral", ...props }: BadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-xs font-medium ring-1 ring-inset",
+        "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-semibold ring-1 ring-inset backdrop-blur",
         tones[tone],
         className
       )}

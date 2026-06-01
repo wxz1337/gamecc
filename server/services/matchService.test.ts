@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError, ERROR_CODES } from "../../shared/errors.js";
 import { MatchQuery } from "../../shared/match.js";
 import { PandaScoreMatch } from "../types/pandascore.js";
-import { getMatches } from "./matchService.js";
+import { areWindowsCoveringDateRange, getMatches, getMissingDateRanges } from "./matchService.js";
 import { fetchPandaScoreMatches } from "./pandascoreClient.js";
 
 vi.mock("./pandascoreClient.js", () => ({
@@ -109,6 +109,82 @@ function buildRawMatch(overrides: RawMatchOverrides): PandaScoreMatch {
 describe("matchService", () => {
   beforeEach(() => {
     mockedFetchPandaScoreMatches.mockReset();
+  });
+
+  it("detects continuous historical coverage across fragmented windows", () => {
+    expect(
+      areWindowsCoveringDateRange(
+        [
+          { from_date: "2026-05-04", to_date: "2026-05-10" },
+          { from_date: "2026-05-11", to_date: "2026-05-17" },
+          { from_date: "2026-05-18", to_date: "2026-05-24" }
+        ],
+        "2026-05-04",
+        "2026-05-18"
+      )
+    ).toBe(true);
+
+    expect(
+      areWindowsCoveringDateRange(
+        [
+          { from_date: "2026-05-05", to_date: "2026-05-10" },
+          { from_date: "2026-05-11", to_date: "2026-05-18" }
+        ],
+        "2026-05-04",
+        "2026-05-18"
+      )
+    ).toBe(false);
+
+    expect(
+      areWindowsCoveringDateRange(
+        [
+          { from_date: "2026-05-04", to_date: "2026-05-10" },
+          { from_date: "2026-05-10", to_date: "2026-05-18" }
+        ],
+        "2026-05-04",
+        "2026-05-18"
+      )
+    ).toBe(true);
+  });
+
+  it("lists only the missing historical finished date ranges", () => {
+    expect(
+      getMissingDateRanges(
+        [
+          { from_date: "2026-05-05", to_date: "2026-05-10" },
+          { from_date: "2026-05-11", to_date: "2026-05-17" },
+          { from_date: "2026-05-18", to_date: "2026-05-24" }
+        ],
+        "2026-05-04",
+        "2026-05-18"
+      )
+    ).toEqual([{ fromDate: "2026-05-04", toDate: "2026-05-04" }]);
+
+    expect(
+      getMissingDateRanges(
+        [
+          { from_date: "2026-05-04", to_date: "2026-05-10" },
+          { from_date: "2026-05-12", to_date: "2026-05-18" }
+        ],
+        "2026-05-04",
+        "2026-05-18"
+      )
+    ).toEqual([{ fromDate: "2026-05-11", toDate: "2026-05-11" }]);
+
+    expect(
+      getMissingDateRanges(
+        [
+          { from_date: "2026-05-04", to_date: "2026-05-10" },
+          { from_date: "2026-05-14", to_date: "2026-05-18" }
+        ],
+        "2026-05-04",
+        "2026-05-18"
+      )
+    ).toEqual([{ fromDate: "2026-05-11", toDate: "2026-05-13" }]);
+
+    expect(getMissingDateRanges([], "2026-05-04", "2026-05-18")).toEqual([
+      { fromDate: "2026-05-04", toDate: "2026-05-18" }
+    ]);
   });
 
   it("filters, sorts and builds facets for 0.2.0 queries", async () => {
