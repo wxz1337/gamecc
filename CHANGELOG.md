@@ -4,6 +4,18 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循轻量 SemVer。
 
+## [0.8.0] - 2026-06-01
+
+### Changed
+
+- 项目版本号提升至 `0.8.0`，并同步更新 README、项目状态和发布流程文档。
+
+### Verified
+
+- `npm run typecheck` 通过。
+- `npm test` 通过。
+- `npm run build` 通过。
+
 ## [0.7.0] - 2026-05-31
 
 ### Changed
