@@ -27,7 +27,6 @@ import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
 import { FilterTabs } from "./components/FilterTabs";
 import { WeekStrip } from "./components/WeekStrip";
-import { FeaturedMatches } from "./components/FeaturedMatches";
 import { DashboardHero } from "./components/DashboardHero";
 import type { MatchTier } from "../shared/match";
 
@@ -120,7 +119,7 @@ function App() {
     };
   }, []);
 
-  const { data, loading, error, appendError, source, refresh, appendMatches } = useMatches({ filters });
+  const { data, loading, error, appendError, refresh, appendMatches } = useMatches({ filters });
   const isInitialLoading = loading && !data;
 
   useEffect(() => {
@@ -184,16 +183,6 @@ function App() {
     : data?.partial
       ? "部分数据源同步失败，已先展示可用赛程。"
       : null;
-  const featuredTitle = activeDate === today ? "今日重点" : "当日重点";
-  const featuredMatches = useMemo(() => {
-    const matchesForDate = data?.matches.filter((match) => match.displayDate === activeDate) ?? [];
-
-    if (filters.status === "finished") {
-      return matchesForDate.filter((match) => match.status === "finished");
-    }
-
-    return matchesForDate.filter((match) => match.status === "running" || match.status === "not_started");
-  }, [activeDate, data, filters.status]);
   const matchCounts = useMemo(() => {
     const counts: Record<string, number> = {};
 
@@ -340,14 +329,13 @@ function App() {
         </div>
       </div>
 
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
         <DashboardHero activeDate={activeDate} runningCount={runningCount} totalLabel={totalLabel} />
 
-        <div className="space-y-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-1 flex-wrap items-center gap-4">
+        <div className="rounded-xl border border-zinc-200/70 bg-white/75 p-3 sm:p-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+            <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:flex xl:flex-wrap xl:items-start xl:gap-4">
               <FilterTabs label="游戏" onChange={updateGame} options={GAME_FILTER_OPTIONS} value={filters.game} />
-              <div className="hidden h-8 w-px bg-zinc-200 sm:block" />
               <FilterTabs
                 label="状态"
                 onChange={(value) => updateStatus(value as MatchPageState["status"])}
@@ -356,7 +344,7 @@ function App() {
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2 xl:pt-6">
               <Button
                 className="gap-2 text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
                 onClick={() => setShowMoreFilters((current) => !current)}
@@ -381,24 +369,22 @@ function App() {
           <AnimatePresence initial={false}>
             {showMoreFilters ? (
               <motion.div
-                animate={{ height: "auto", opacity: 1, marginTop: 16 }}
+                animate={{ height: "auto", opacity: 1, marginTop: 12 }}
                 className="overflow-hidden"
                 exit={{ height: 0, opacity: 0, marginTop: 0 }}
                 initial={{ height: 0, opacity: 0, marginTop: 0 }}
                 transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
               >
-                <div className="rounded-xl border border-zinc-200/60 bg-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] backdrop-blur-sm">
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    <FilterTabs label="赛区" onChange={(value) => updateField("region", value)} options={regionOptions} value={filters.region} />
-                    <FilterTabs
-                      isSelected={(value) => (value === "all" ? filters.tier === "all" : selectedTiers.includes(value as MatchTier))}
-                      label="赛事级别"
-                      multiSelect
-                      onChange={(value) => updateTier(value as "all" | MatchTier)}
-                      options={TIER_FILTER_OPTIONS}
-                      value={filters.tier}
-                    />
-                  </div>
+                <div className="grid gap-4 border-t border-zinc-200/70 pt-4 sm:grid-cols-2">
+                  <FilterTabs label="赛区" onChange={(value) => updateField("region", value)} options={regionOptions} value={filters.region} />
+                  <FilterTabs
+                    isSelected={(value) => (value === "all" ? filters.tier === "all" : selectedTiers.includes(value as MatchTier))}
+                    label="赛事级别"
+                    multiSelect
+                    onChange={(value) => updateTier(value as "all" | MatchTier)}
+                    options={TIER_FILTER_OPTIONS}
+                    value={filters.tier}
+                  />
                 </div>
               </motion.div>
             ) : null}
@@ -411,81 +397,67 @@ function App() {
           </div>
         </div>
 
-        {statusMessage ? <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{statusMessage}</div> : null}
-
-        {data ? (
-          <div className="rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 text-sm text-zinc-600">
-            {source === "mock"
-              ? "当前显示本地 mock 数据，配置 PandaScore token 后会自动切换到真实赛程。"
-              : loading
-                ? `正在同步赛程，当前保留显示 ${data.total} 场比赛。`
-                : data.partial
-                  ? `当前显示部分实时赛程数据，已载入 ${data.total} 场比赛。`
-                  : `当前显示实时赛程数据，已载入 ${data.total} 场比赛。`}
-          </div>
-        ) : null}
-
-        {!error && featuredMatches.length > 0 ? <FeaturedMatches matches={featuredMatches} title={featuredTitle} /> : null}
-
-        <section className="space-y-3">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Match List</p>
-              <h2 className="text-xl font-semibold tracking-tight text-zinc-950">全部赛事</h2>
+        <div className="grid gap-5">
+          <section className="min-w-0 space-y-3">
+            <div className="flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-xl font-semibold tracking-tight text-zinc-950">全部赛事</h2>
+              </div>
+              <Badge tone="neutral">{!error && data ? `${listMatches.length} 场` : totalLabel}</Badge>
             </div>
-            <Badge tone="neutral">{!error && data ? `${listMatches.length} 场` : totalLabel}</Badge>
-          </div>
 
-          {isInitialLoading ? <LoadingState /> : null}
-          {!data && error ? <ErrorState message={error.message} onRetry={refresh} /> : null}
-          {error && data ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              本次同步失败，已保留当前列表。{error.message}
-            </div>
-          ) : null}
-          <AnimatePresence initial={false} mode="wait">
-            {data && listMatches.length > 0 ? (
-              <motion.div
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                initial={{ opacity: 0, y: 8 }}
-                key={listTransitionKey}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-              >
-                <MatchList
-                  isLoadingMore={isLoadingMore}
-                  matches={listMatches}
-                  onNearEnd={loadFutureMatches}
-                  onNearStart={loadPreviousMatches}
-                  onVisibleDateChange={handleVisibleDateChange}
-                />
-              </motion.div>
+            {statusMessage ? <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{statusMessage}</div> : null}
+            {isInitialLoading ? <LoadingState /> : null}
+            {!data && error ? <ErrorState message={error.message} onRetry={refresh} /> : null}
+            {error && data ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                本次同步失败，已保留当前列表。{error.message}
+              </div>
             ) : null}
-          </AnimatePresence>
-          {appendError ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              加载更多失败，已保留当前列表。{appendError.message}
-            </div>
-          ) : null}
-          {data ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 text-sm text-zinc-600">
-              <span>
-                {timelineComplete
-                  ? `已显示到本周最后一天 ${timelineBounds.to}`
-                  : isLoadingMore
-                    ? `正在加载更多赛程，当前已显示到 ${loadedTimelineTo}`
-                    : `已加载到 ${loadedTimelineTo}，继续向下滚动或点击加载到 ${timelineBounds.to}`}
-              </span>
-              {!timelineComplete ? (
-                <Button disabled={loading} onClick={loadFutureMatches} type="button" variant="outline">
-                  <RefreshCw className={isLoadingMore ? "size-4 animate-spin" : "size-4"} />
-                  加载更多
-                </Button>
+            <AnimatePresence initial={false} mode="wait">
+              {data && listMatches.length > 0 ? (
+                <motion.div
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  initial={{ opacity: 0, y: 8 }}
+                  key={listTransitionKey}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                >
+                  <MatchList
+                    isLoadingMore={isLoadingMore}
+                    matches={listMatches}
+                    onNearEnd={loadFutureMatches}
+                    onNearStart={loadPreviousMatches}
+                    onVisibleDateChange={handleVisibleDateChange}
+                  />
+                </motion.div>
               ) : null}
-            </div>
-          ) : null}
-          {!loading && !error && data && listMatches.length === 0 ? <EmptyState message={getEmptyStateMessage(filters)} /> : null}
-        </section>
+            </AnimatePresence>
+            {appendError ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                加载更多失败，已保留当前列表。{appendError.message}
+              </div>
+            ) : null}
+            {data ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 text-sm text-zinc-600">
+                <span>
+                  {timelineComplete
+                    ? `已显示到本周最后一天 ${timelineBounds.to}`
+                    : isLoadingMore
+                      ? `正在加载更多赛程，当前已显示到 ${loadedTimelineTo}`
+                      : `已加载到 ${loadedTimelineTo}，继续向下滚动或点击加载到 ${timelineBounds.to}`}
+                </span>
+                {!timelineComplete ? (
+                  <Button disabled={loading} onClick={loadFutureMatches} type="button" variant="outline">
+                    <RefreshCw className={isLoadingMore ? "size-4 animate-spin" : "size-4"} />
+                    加载更多
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+            {!loading && !error && data && listMatches.length === 0 ? <EmptyState message={getEmptyStateMessage(filters)} /> : null}
+          </section>
+        </div>
 
         <footer className="flex flex-col justify-between gap-2 border-t border-zinc-200 py-5 text-sm text-zinc-500 sm:flex-row">
           <span>PandaScore API · 时区 {BEIJING_TIME_ZONE}</span>

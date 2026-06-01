@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Radio, Star, Trophy } from "lucide-react";
+import { Radio, Trophy } from "lucide-react";
 import type { Match } from "../../shared/match";
 import { GAME_LABELS } from "../constants/matches";
 import { getTeamScore } from "../utils/matchFormatters";
@@ -41,15 +41,15 @@ export function FeaturedMatches({ matches, title = "重点赛事" }: FeaturedMat
   }
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">{title}</p>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 mt-1">值得先看的比赛</h2>
+    <section className="rounded-xl border border-zinc-200/70 bg-white/75 p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold tracking-tight text-zinc-950">{title}</h2>
+          <p className="mt-0.5 text-sm text-zinc-500">优先显示直播、S/A 级赛事</p>
         </div>
       </div>
 
-      <div className="flex overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 gap-4 snap-x snap-mandatory scrollbar-none lg:grid lg:grid-cols-3">
+      <div className="grid gap-2">
         {featured.map((match, index) => {
           const leftTeam = match.teams[0];
           const rightTeam = match.teams[1];
@@ -60,26 +60,19 @@ export function FeaturedMatches({ matches, title = "重点赛事" }: FeaturedMat
           return (
             <motion.div
               animate={{ opacity: 1, scale: 1 }}
-              initial={{ opacity: 0, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.98 }}
               key={match.id}
-              transition={{ delay: index * 0.08, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="min-w-[280px] sm:min-w-[320px] w-full shrink-0 snap-start lg:min-w-0"
+              transition={{ delay: index * 0.03, duration: 0.18, ease: "easeOut" }}
             >
               <div className={cn(
-                "group relative h-full overflow-hidden rounded-2xl border transition-all duration-300 ease-out hover:-translate-y-[2px] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)]",
-                isRunning ? "border-red-100 bg-gradient-to-br from-red-50 to-white" : "border-zinc-200/60 bg-gradient-to-br from-zinc-50 to-white"
+                "group relative rounded-lg border p-3 transition-colors duration-200",
+                isRunning ? "border-red-200 bg-red-50/70" : "border-zinc-200/70 bg-zinc-50/60 hover:bg-zinc-50"
               )}>
-                {/* Simulated background glow */}
-                <div className={cn(
-                  "absolute -right-20 -top-20 size-40 rounded-full blur-3xl opacity-20",
-                  isRunning ? "bg-red-500" : "bg-zinc-400"
-                )} />
-
-                <div className="relative p-5">
-                  <div className="flex items-start justify-between gap-3 mb-6">
+                <div className="grid gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-[15px] font-bold text-zinc-900">{match.tournament}</p>
-                      <p className="mt-1 flex items-center gap-1.5 truncate text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                      <p className="truncate text-sm font-semibold text-zinc-950">{match.tournament}</p>
+                      <p className="mt-1 flex items-center gap-1.5 truncate text-xs font-medium text-zinc-500">
                         <span>{GAME_LABELS[match.game]}</span>
                         <span className="size-1 rounded-full bg-zinc-300" />
                         <span>{match.displayTime}</span>
@@ -88,39 +81,39 @@ export function FeaturedMatches({ matches, title = "重点赛事" }: FeaturedMat
                     <StatusBadge status={match.status} />
                   </div>
                   
-                  <div className="flex items-center justify-between gap-4 mb-4">
-                    <div className="flex w-full min-w-0 flex-col items-center">
+                  <div className="grid grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)] items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
                       {leftTeam?.imageUrl ? (
-                        <img src={leftTeam.imageUrl} alt="" className="size-12 rounded-full object-contain mb-2 bg-white ring-1 ring-black/5 shadow-sm p-1" />
+                        <img src={leftTeam.imageUrl} alt="" className="size-8 rounded-full bg-white object-contain p-1 ring-1 ring-black/5" />
                       ) : (
-                        <div className="size-12 rounded-full mb-2 bg-white ring-1 ring-black/5 shadow-sm flex items-center justify-center text-xs font-bold text-zinc-300">TBD</div>
+                        <div className="flex size-8 items-center justify-center rounded-full bg-white text-[10px] font-bold text-zinc-300 ring-1 ring-black/5">TBD</div>
                       )}
-                      <span className="w-full truncate text-center text-sm font-bold text-zinc-900">
+                      <span className="min-w-0 truncate text-sm font-semibold text-zinc-900">
                         {leftTeam?.acronym || leftTeam?.name || "TBD"}
                       </span>
                     </div>
 
-                    <div className="flex flex-col items-center justify-center shrink-0 w-16">
-                      <div className="flex items-center gap-1.5 text-2xl font-bold tabular-nums text-zinc-900">
+                    <div className="flex shrink-0 justify-center">
+                      <div className="flex items-center gap-1.5 text-xl font-bold tabular-nums text-zinc-900">
                         <span className={leftScore !== null && leftScore > (rightScore ?? 0) ? "text-amber-600" : ""}>{leftScore ?? "-"}</span>
                         <span className="text-zinc-300 font-normal">:</span>
                         <span className={rightScore !== null && rightScore > (leftScore ?? 0) ? "text-amber-600" : ""}>{rightScore ?? "-"}</span>
                       </div>
                     </div>
 
-                    <div className="flex w-full min-w-0 flex-col items-center">
-                      {rightTeam?.imageUrl ? (
-                        <img src={rightTeam.imageUrl} alt="" className="size-12 rounded-full object-contain mb-2 bg-white ring-1 ring-black/5 shadow-sm p-1" />
-                      ) : (
-                        <div className="size-12 rounded-full mb-2 bg-white ring-1 ring-black/5 shadow-sm flex items-center justify-center text-xs font-bold text-zinc-300">TBD</div>
-                      )}
-                      <span className="w-full truncate text-center text-sm font-bold text-zinc-900">
+                    <div className="flex min-w-0 items-center justify-end gap-2">
+                      <span className="min-w-0 truncate text-right text-sm font-semibold text-zinc-900">
                         {rightTeam?.acronym || rightTeam?.name || "TBD"}
                       </span>
+                      {rightTeam?.imageUrl ? (
+                        <img src={rightTeam.imageUrl} alt="" className="size-8 rounded-full bg-white object-contain p-1 ring-1 ring-black/5" />
+                      ) : (
+                        <div className="flex size-8 items-center justify-center rounded-full bg-white text-[10px] font-bold text-zinc-300 ring-1 ring-black/5">TBD</div>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-400 border-t border-black/[0.04] pt-4">
+                  <div className="flex items-center justify-between border-t border-black/[0.05] pt-3 text-xs font-medium text-zinc-500">
                     <span className="inline-flex items-center gap-1.5">
                       <Trophy className="size-3.5" />
                       {match.bestOf ? `BO${match.bestOf}` : "赛制待定"}
@@ -128,7 +121,7 @@ export function FeaturedMatches({ matches, title = "重点赛事" }: FeaturedMat
                     {isRunning ? (
                       <span className="inline-flex items-center gap-1.5 text-red-500">
                         <Radio className="size-3.5 animate-pulse" />
-                        LIVE
+                        直播中
                       </span>
                     ) : null}
                   </div>

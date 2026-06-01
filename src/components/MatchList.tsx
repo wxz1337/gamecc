@@ -103,7 +103,7 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
   let previousDate = "";
 
   return (
-    <motion.div className="timeline-list relative z-0 grid gap-3" ref={containerRef}>
+    <motion.div className="timeline-list relative z-0 grid gap-2.5" ref={containerRef}>
       <div aria-hidden ref={topSentinelRef} />
       {matches.map((match) => {
         const shouldShowDate = match.displayDate !== previousDate;
@@ -114,7 +114,7 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
         return (
           <div key={match.id}>
             {shouldShowDate ? (
-              <div className="sticky top-20 z-30 -mx-1 mb-3 rounded-full border border-zinc-200/50 bg-white/80 px-4 py-1.5 text-[13px] font-bold tracking-tight text-zinc-800 backdrop-blur-md shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] inline-block">
+              <div className="sticky top-20 z-30 mb-2 inline-flex rounded-full border border-zinc-200/70 bg-[#fafafa]/95 px-3 py-1 text-[13px] font-semibold tracking-tight text-zinc-800 backdrop-blur-md">
                 {match.displayDate}
               </div>
             ) : null}
@@ -143,7 +143,7 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
           transition={{ duration: 0.2, ease: "easeOut" }}
         >
           {Array.from({ length: 3 }).map((_, skeletonIndex) => (
-            <div className="rounded-2xl border border-stone-200 bg-white/80 p-4 sm:p-5" key={`load-more-skeleton-${skeletonIndex}`}>
+            <div className="rounded-xl border border-stone-200 bg-white/80 p-4" key={`load-more-skeleton-${skeletonIndex}`}>
               <div className="grid gap-3 sm:grid-cols-[76px_minmax(0,1fr)]">
                 <div className="space-y-2">
                   <div className="h-4 w-12 animate-pulse rounded bg-stone-200/80" />
