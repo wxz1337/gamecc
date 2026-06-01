@@ -114,7 +114,7 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
         return (
           <div key={match.id}>
             {shouldShowDate ? (
-              <div className="sticky top-2 z-20 -mx-1 mb-3 w-max rounded-full border border-stone-200 bg-white/92 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm shadow-stone-900/10 backdrop-blur-sm">
+              <div className="sticky top-20 z-30 -mx-1 mb-3 rounded-full border border-zinc-200/50 bg-white/80 px-4 py-1.5 text-[13px] font-bold tracking-tight text-zinc-800 backdrop-blur-md shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] inline-block">
                 {match.displayDate}
               </div>
             ) : null}

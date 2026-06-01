@@ -40,11 +40,9 @@ export function WeekStrip({
             <motion.button
               animate={{ opacity: 1, y: 0 }}
               className={cn(
-                "relative min-h-16 min-w-0 overflow-hidden rounded-2xl border px-3 py-2 text-left transition-all duration-200",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#172033]/20",
-                selected
-                  ? "border-[#172033]/20 text-white shadow-[0_12px_28px_rgba(23,32,51,0.16)]"
-                  : "border-stone-200 bg-white/72 text-slate-700 hover:-translate-y-0.5 hover:border-stone-300 hover:bg-white"
+                "relative min-w-0 overflow-hidden rounded-2xl px-2 py-3 text-center transition-all duration-300 ease-out",
+                "hover:-translate-y-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/10",
+                selected ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100/50"
               )}
               initial={{ opacity: 0, y: 6 }}
               key={date}
@@ -55,15 +53,15 @@ export function WeekStrip({
             >
               {selected ? (
                 <motion.span
-                  className="absolute inset-0 rounded-2xl bg-[linear-gradient(135deg,#172033,#31415f)]"
+                  className="absolute inset-0 rounded-2xl bg-white shadow-[0_2px_12px_-2px_rgba(0,0,0,0.06)] border border-zinc-200/50"
                   layoutId="selected-date-pill"
-                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               ) : null}
-              <span className={cn("relative z-10 block text-[11px] font-bold uppercase tracking-[0.16em]", selected ? "text-slate-200" : "text-slate-500")}>
+              <span className={cn("relative z-10 block text-[11px] font-bold uppercase tracking-wider", selected ? "text-zinc-500" : "text-zinc-400")}>
                 {date === today ? "今天" : weekday}
               </span>
-              <strong className="font-display relative z-10 mt-1 block truncate text-base font-bold sm:text-[1.05rem]">
+              <strong className={cn("relative z-10 mt-1 block truncate text-base font-bold", selected ? "text-zinc-900" : "text-zinc-600")}>
                 {date.slice(5).replace("-", ".")}
               </strong>
             </motion.button>
