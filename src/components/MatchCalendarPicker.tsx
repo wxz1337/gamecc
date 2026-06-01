@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getBeijingWeekDates } from "../../shared/date";
+import { motion } from "framer-motion";
 
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"] as const;
 
@@ -90,12 +91,24 @@ export function MatchCalendarPicker({
   };
 
   return (
-    <section
-      aria-label="选择赛事日期"
-      className="match-calendar-panel"
-      role="dialog"
-      onMouseDown={(event) => event.stopPropagation()}
-    >
+    <>
+      <motion.div
+        className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm sm:hidden"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      />
+      <motion.section
+        aria-label="选择赛事日期"
+        className="match-calendar-panel"
+        role="dialog"
+        onMouseDown={(event) => event.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.9, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 10 }}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+      >
       <header className="match-calendar-panel__header">
         <button className="match-calendar-panel__nav" onClick={() => moveMonth(-12)} type="button" aria-label="上一年">
           «
@@ -161,6 +174,7 @@ export function MatchCalendarPicker({
           取消
         </button>
       </footer>
-    </section>
+      </motion.section>
+    </>
   );
 }

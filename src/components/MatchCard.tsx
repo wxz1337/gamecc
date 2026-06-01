@@ -26,12 +26,28 @@ export function MatchCard({ match }: { match: Match }) {
   ].filter((item): item is string => Boolean(item));
   const detailTimestamp = formatDateTime(match.updatedAt);
 
+  const isRunning = match.status === "running";
+
   return (
-    <Card className="overflow-hidden transition-all duration-150 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md">
+    <Card 
+      className={cn(
+        "group relative overflow-hidden transition-all duration-300 ease-out hover:-translate-y-[2px] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.06)] hover:border-zinc-300/80",
+        isRunning && "border-red-100/80 shadow-[0_4px_20px_-4px_rgba(239,68,68,0.06)] ring-1 ring-red-500/10"
+      )}
+    >
+      {isRunning && (
+        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-red-500/40 to-transparent" />
+      )}
       <div className="grid gap-4 p-4 sm:grid-cols-[76px_minmax(0,1fr)] sm:p-5">
-        <div className="flex items-baseline justify-between gap-3 sm:block">
-          <p className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-zinc-950">{match.displayTime}</p>
-          <p className="mt-1 text-xs font-medium text-zinc-500">{match.displayDate}</p>
+        <div className="flex items-baseline justify-between gap-3 sm:block relative">
+          <p className={cn(
+            "font-mono text-2xl font-bold tabular-nums tracking-tight",
+            isRunning ? "text-red-600" : "text-zinc-950"
+          )}>
+            {isRunning && <span className="absolute -left-3.5 top-2.5 size-1.5 rounded-full bg-red-500 animate-pulse sm:hidden" />}
+            {match.displayTime}
+          </p>
+          <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-zinc-400">{match.displayDate}</p>
         </div>
 
         <div className="min-w-0 space-y-4">
@@ -68,23 +84,28 @@ export function MatchCard({ match }: { match: Match }) {
               return (
                 <div
                   className={cn(
-                    "grid min-h-16 grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border p-3",
-                    isWinner ? "border-amber-200 bg-amber-50" : "border-zinc-200 bg-zinc-50/70"
+                    "grid min-h-16 grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border p-3 transition-colors duration-200",
+                    isWinner 
+                      ? "border-amber-200/60 bg-gradient-to-br from-amber-50/80 to-transparent" 
+                      : "border-zinc-200/50 bg-zinc-50/50 group-hover:bg-zinc-50/80"
                   )}
                   key={`${match.id}-${team.id ?? index}`}
                 >
                   {logo ? (
-                    <img alt="" className="size-10 rounded-full bg-white object-contain p-1 ring-1 ring-zinc-200" src={logo} />
+                    <img alt="" className="size-10 rounded-full bg-white object-contain p-1 shadow-sm ring-1 ring-zinc-900/5" src={logo} />
                   ) : (
-                    <span className="grid size-10 place-items-center rounded-full bg-white text-xs font-semibold text-zinc-400 ring-1 ring-zinc-200">
+                    <span className="grid size-10 place-items-center rounded-full bg-white text-[10px] font-bold tracking-wider text-zinc-300 ring-1 ring-zinc-900/5 shadow-sm">
                       TBD
                     </span>
                   )}
                   <div className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-zinc-950">{team.acronym || team.name}</span>
-                    {team.location ? <span className="block truncate text-xs text-zinc-500">{team.location}</span> : null}
+                    <span className="block truncate text-sm font-bold text-zinc-900">{team.acronym || team.name}</span>
+                    {team.location ? <span className="block truncate text-[11px] uppercase tracking-wider text-zinc-400 mt-0.5">{team.location}</span> : null}
                   </div>
-                  <strong className="min-w-8 text-right text-2xl font-semibold tabular-nums text-zinc-950">{score ?? "-"}</strong>
+                  <strong className={cn(
+                    "min-w-8 text-right text-2xl font-bold tabular-nums",
+                    isWinner ? "text-amber-600" : "text-zinc-900"
+                  )}>{score ?? "-"}</strong>
                 </div>
               );
             })}

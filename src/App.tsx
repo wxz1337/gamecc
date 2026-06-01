@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, CalendarClock, Database, RefreshCw, RotateCcw, Sparkles, Trophy } from "lucide-react";
+import { ArrowUp, RefreshCw, RotateCcw, Filter, ChevronDown } from "lucide-react";
 import { BEIJING_TIME_ZONE, addBeijingDays, getBeijingTodayDate, getBeijingWeekDates, isValidDateString } from "../shared/date";
 import { MatchPageState, buildMatchPageSearchParams, parseMatchPageState, resetMatchPageState } from "./utils/matchPageState";
 import {
@@ -24,11 +24,11 @@ import { MatchList } from "./components/MatchList";
 import { MatchCalendarPicker } from "./components/MatchCalendarPicker";
 import { formatUpdatedAt, getEmptyStateMessage } from "./utils/matchFormatters";
 import { Button } from "./components/ui/button";
-import { Card } from "./components/ui/card";
 import { Badge } from "./components/ui/badge";
 import { FilterTabs } from "./components/FilterTabs";
 import { WeekStrip } from "./components/WeekStrip";
 import { FeaturedMatches } from "./components/FeaturedMatches";
+import { DashboardHero } from "./components/DashboardHero";
 import type { MatchTier } from "../shared/match";
 
 const TIER_ORDER: MatchTier[] = ["S", "A", "B", "C"];
@@ -85,6 +85,7 @@ function App() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
 
   useEffect(() => {
     const onPopState = () => {
@@ -318,101 +319,92 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#f6f5f2] text-zinc-950">
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-        <motion.section
-          animate={{ opacity: 1, y: 0 }}
-          className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]"
-          initial={{ opacity: 0, y: 10 }}
-          transition={{ duration: 0.2 }}
-        >
-          <div className="min-w-0">
-            <Badge className="mb-3" tone="dark">
-              <Sparkles className="size-3.5" />
-              个人观赛面板
-            </Badge>
-            <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl">电竞赛程聚合</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
-              以北京时间按时间线查看电竞比赛，选择日期后从当天开始，向下浏览到本周最后一天。
-            </p>
-          </div>
+    <div className="min-h-screen bg-[#fafafa] text-zinc-950 font-sans selection:bg-zinc-200">
+      {/* Sticky WeekStrip at the top */}
+      <div className="sticky top-0 z-40 border-b border-zinc-200/60 bg-white/80 pb-3 pt-4 backdrop-blur-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <WeekStrip
+            dates={weekDates}
+            isCalendarOpen={isCalendarOpen}
+            onMoveDate={moveDate}
+            onOpenCalendar={() => setIsCalendarOpen((current) => !current)}
+            onSelectDate={updateSelectedDate}
+            selectedDate={activeDate}
+            today={today}
+          />
+        </div>
+      </div>
 
-          <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[500px]">
-            <Card className="p-4">
-              <p className="flex items-center gap-2 text-xs font-medium text-zinc-500">
-                <CalendarClock className="size-4" />
-                当前日期
-              </p>
-              <strong className="mt-2 block text-lg tabular-nums text-zinc-950">{activeDate}</strong>
-            </Card>
-            <Card className="p-4">
-              <p className="flex items-center gap-2 text-xs font-medium text-zinc-500">
-                <Trophy className="size-4" />
-                已载入
-              </p>
-              <strong className="mt-2 block text-lg text-zinc-950">{totalLabel}</strong>
-            </Card>
-            <Card className="p-4">
-              <p className="flex items-center gap-2 text-xs font-medium text-zinc-500">
-                <Database className="size-4" />
-                进行中
-              </p>
-              <strong className="mt-2 block text-lg text-zinc-950">{runningCount} 场</strong>
-            </Card>
-          </div>
-        </motion.section>
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <DashboardHero activeDate={activeDate} runningCount={runningCount} totalLabel={totalLabel} />
 
-        <Card className="space-y-5 p-4 sm:p-5">
-          <div className="grid gap-4 xl:grid-cols-2">
-            <FilterTabs label="游戏" onChange={updateGame} options={GAME_FILTER_OPTIONS} value={filters.game} />
-            <FilterTabs label="赛区" onChange={(value) => updateField("region", value)} options={regionOptions} value={filters.region} />
-          </div>
-
-          <div className="grid gap-4 xl:grid-cols-2">
-            <FilterTabs
-              isSelected={(value) => (value === "all" ? filters.tier === "all" : selectedTiers.includes(value as MatchTier))}
-              label="赛事级别"
-              multiSelect
-              onChange={(value) => updateTier(value as "all" | MatchTier)}
-              options={TIER_FILTER_OPTIONS}
-              value={filters.tier}
-            />
-            <FilterTabs
-              label="状态"
-              onChange={(value) => updateStatus(value as MatchPageState["status"])}
-              options={MATCH_STATUS_FILTER_OPTIONS}
-              value={filters.status}
-            />
-          </div>
-
-          <div className="border-t border-zinc-200 pt-5">
-            <WeekStrip
-              dates={weekDates}
-              isCalendarOpen={isCalendarOpen}
-              onMoveDate={moveDate}
-              onOpenCalendar={() => setIsCalendarOpen((current) => !current)}
-              onSelectDate={updateSelectedDate}
-              selectedDate={activeDate}
-              today={today}
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 pt-4">
-            <p className="text-sm text-zinc-600">
-              {currentGameLabel} · {selectedRegionLabel} · {selectedTierLabel} · {currentStateLabel} · 时间线 {filters.from} 至 {loadedTimelineTo} · 可浏览 {timelineBounds.from} 至 {timelineBounds.to}
-            </p>
-            <div className="flex gap-2">
-              <Button onClick={handleReset} type="button" variant="outline">
-                <RotateCcw className="size-4" />
-                重置
+        <div className="space-y-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-1 flex-wrap items-center gap-4">
+              <FilterTabs label="游戏" onChange={updateGame} options={GAME_FILTER_OPTIONS} value={filters.game} />
+              <div className="hidden h-8 w-px bg-zinc-200 sm:block" />
+              <FilterTabs
+                label="状态"
+                onChange={(value) => updateStatus(value as MatchPageState["status"])}
+                options={MATCH_STATUS_FILTER_OPTIONS}
+                value={filters.status}
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                className="gap-2 text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+                onClick={() => setShowMoreFilters(!showMoreFilters)}
+                size="sm"
+                variant="ghost"
+              >
+                <Filter className="size-4" />
+                更多筛选
+                <ChevronDown className={`size-3.5 transition-transform duration-300 ${showMoreFilters ? "rotate-180" : ""}`} />
               </Button>
-              <Button disabled={loading} onClick={refresh} type="button">
-                <RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} />
-                刷新
+              <Button onClick={handleReset} size="sm" type="button" variant="outline" className="gap-2 text-zinc-600">
+                <RotateCcw className="size-3.5" />
+                <span className="hidden sm:inline">重置</span>
+              </Button>
+              <Button disabled={loading} onClick={refresh} size="sm" type="button" variant="outline" className="gap-2">
+                <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} />
+                <span className="hidden sm:inline">刷新</span>
               </Button>
             </div>
           </div>
-        </Card>
+
+          <AnimatePresence initial={false}>
+            {showMoreFilters && (
+              <motion.div
+                animate={{ height: "auto", opacity: 1, marginTop: 16 }}
+                className="overflow-hidden"
+                exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <div className="rounded-xl border border-zinc-200/60 bg-white/50 p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] backdrop-blur-sm">
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <FilterTabs label="赛区" onChange={(value) => updateField("region", value)} options={regionOptions} value={filters.region} />
+                    <FilterTabs
+                      isSelected={(value) => (value === "all" ? filters.tier === "all" : selectedTiers.includes(value as MatchTier))}
+                      label="赛事级别"
+                      multiSelect
+                      onChange={(value) => updateTier(value as "all" | MatchTier)}
+                      options={TIER_FILTER_OPTIONS}
+                      value={filters.tier}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500">
+            <p>
+              {currentGameLabel} · {selectedRegionLabel} · {selectedTierLabel} · {currentStateLabel}
+            </p>
+          </div>
+        </div>
 
         {statusMessage ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{statusMessage}</div>

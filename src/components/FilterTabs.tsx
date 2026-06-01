@@ -25,17 +25,17 @@ export function FilterTabs<T extends string>({
 }: FilterTabsProps<T>) {
   return (
     <div className="min-w-0 space-y-2">
-      <p className="px-1 text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</p>
-      <div className="flex gap-1.5 overflow-x-auto rounded-lg bg-zinc-100 p-1 scrollbar-none">
+      <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">{label}</p>
+      <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-none">
         {options.map((option) => {
           const selected = isSelected ? isSelected(option.value) : value === option.value;
 
           return (
             <button
               className={cn(
-                "relative h-9 shrink-0 rounded-md px-3 text-sm font-medium text-zinc-600 transition-colors",
-                "hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950/10",
-                selected && "text-zinc-950"
+                "relative h-8 shrink-0 rounded-full px-3.5 text-sm font-medium transition-all duration-200",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950/10",
+                selected ? "text-zinc-900" : "text-zinc-500 hover:bg-zinc-100/80 hover:text-zinc-800"
               )}
               key={option.value}
               onClick={() => onChange(option.value)}
@@ -43,9 +43,9 @@ export function FilterTabs<T extends string>({
             >
               {selected ? (
                 <motion.span
-                  className="absolute inset-0 rounded-md bg-white shadow-sm ring-1 ring-zinc-200"
+                  className="absolute inset-0 rounded-full bg-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] ring-1 ring-zinc-900/5"
                   layoutId={multiSelect ? `${label}-${option.value}-active-tab` : `${label}-active-tab`}
-                  transition={{ duration: 0.16, ease: "easeOut" }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               ) : null}
               <span className="relative z-10">{option.label}</span>

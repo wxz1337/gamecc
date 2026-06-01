@@ -40,9 +40,9 @@ export function WeekStrip({
             <motion.button
               animate={{ opacity: 1, y: 0 }}
               className={cn(
-                "relative min-w-0 overflow-hidden rounded-lg border bg-white px-2 py-3 text-left transition-all duration-150",
-                "hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-sm",
-                selected ? "border-zinc-950 text-white shadow-sm" : "border-zinc-200 text-zinc-700"
+                "relative min-w-0 overflow-hidden rounded-2xl px-2 py-3 text-center transition-all duration-300 ease-out",
+                "hover:-translate-y-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/10",
+                selected ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100/50"
               )}
               initial={{ opacity: 0, y: 6 }}
               key={date}
@@ -53,15 +53,17 @@ export function WeekStrip({
             >
               {selected ? (
                 <motion.span
-                  className="absolute inset-0 rounded-lg bg-zinc-950"
+                  className="absolute inset-0 rounded-2xl bg-white shadow-[0_2px_12px_-2px_rgba(0,0,0,0.06)] border border-zinc-200/50"
                   layoutId="selected-date-pill"
-                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               ) : null}
-              <span className={cn("relative z-10 block text-xs font-medium", selected ? "text-zinc-300" : "text-zinc-500")}>
+              <span className={cn("relative z-10 block text-[11px] font-bold uppercase tracking-wider", selected ? "text-zinc-500" : "text-zinc-400")}>
                 {date === today ? "今天" : weekday}
               </span>
-              <strong className="relative z-10 mt-1 block truncate text-base">{date.slice(5).replace("-", ".")}</strong>
+              <strong className={cn("relative z-10 mt-1 block truncate text-base font-bold", selected ? "text-zinc-900" : "text-zinc-600")}>
+                {date.slice(5).replace("-", ".")}
+              </strong>
             </motion.button>
           );
         })}
