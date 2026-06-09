@@ -17,7 +17,7 @@ const gameIconLabels: Record<GameFilter, string> = {
 
 export function SidebarNav({ selectedGame, onGameChange }: SidebarNavProps) {
   return (
-    <div className="flex h-full flex-col rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--bg-sidebar)] px-3 py-4">
+    <div className="flex h-full flex-col border-r border-[var(--border-subtle)] bg-[rgba(9,15,25,0.42)] px-3 py-4">
       <div className="mb-5 flex items-center gap-2 px-2">
         <div className="grid size-8 place-items-center rounded-[var(--radius-sm)] bg-[var(--brand-soft)] text-sm font-black text-[var(--brand-primary)] ring-1 ring-[var(--brand-border)]">
           E
@@ -30,7 +30,7 @@ export function SidebarNav({ selectedGame, onGameChange }: SidebarNavProps) {
 
       <nav className="grid gap-5">
         <div className="grid gap-1">
-          <div className="flex items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--brand-soft)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)] ring-1 ring-[var(--brand-border)]">
+          <div className="flex items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-sm font-semibold text-[var(--text-secondary)]">
             <CalendarDays className="size-4 text-[var(--brand-primary)]" />
             赛程
           </div>
@@ -47,7 +47,7 @@ export function SidebarNav({ selectedGame, onGameChange }: SidebarNavProps) {
                   "flex min-h-10 items-center gap-2 rounded-[var(--radius-sm)] px-3 text-left text-sm transition-colors duration-200",
                   "focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]",
                   selected
-                    ? "bg-[rgba(124,92,255,0.11)] text-[var(--text-primary)]"
+                    ? "bg-[rgba(124,92,255,0.13)] text-[var(--text-primary)]"
                     : "text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.035)] hover:text-[var(--text-primary)]"
                 )}
                 key={option.value}
@@ -57,7 +57,7 @@ export function SidebarNav({ selectedGame, onGameChange }: SidebarNavProps) {
                 <span
                   className={cn(
                     "grid size-7 shrink-0 place-items-center rounded-[var(--radius-xs)] text-[11px] font-bold",
-                    selected ? "bg-[var(--brand-soft)] text-[var(--brand-primary)]" : "bg-[rgba(255,255,255,0.035)] text-[var(--text-tertiary)]"
+                    selected ? "bg-[var(--brand-soft)] text-[var(--brand-primary)]" : "bg-[rgba(255,255,255,0.026)] text-[var(--text-tertiary)]"
                   )}
                 >
                   {option.value === "all" ? <Gamepad2 className="size-3.5" /> : gameIconLabels[option.value]}

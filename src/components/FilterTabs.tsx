@@ -33,9 +33,9 @@ export function FilterTabs<T extends string>({
   wrap = false
 }: FilterTabsProps<T>) {
   return (
-    <div className="min-w-0 space-y-2">
-      <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">{label}</p>
-      <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-none">
+    <div className={cn("min-w-0", inlineLabel ? "flex items-center gap-2" : "space-y-2", shrinkWrap && "w-auto")}>
+      <p className={cn("px-1 text-[11px] font-semibold text-[var(--text-tertiary)]", !inlineLabel && "mb-2 uppercase tracking-wider")}>{label}</p>
+      <div className={cn("flex gap-1.5 overflow-x-auto scrollbar-none", wrap ? "flex-wrap overflow-visible pb-0" : "pb-2", shrinkWrap && "w-auto")}>
         {options.map((option) => {
           const selected = isSelected ? isSelected(option.value) : value === option.value;
 
@@ -61,6 +61,7 @@ export function FilterTabs<T extends string>({
             </button>
           );
         })}
+        {trailingSlot}
       </div>
     </div>
   );

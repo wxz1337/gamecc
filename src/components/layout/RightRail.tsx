@@ -27,58 +27,68 @@ export function RightRail({ activeDate, matches, loading, updatedAt, stale = fal
   const featured = todayMatches.slice(0, 3);
 
   return (
-    <div className="grid gap-3">
-      <section className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(13,19,30,0.64)] p-4">
-        <div className="mb-3">
+    <div className="grid gap-4">
+      <section className="space-y-3">
+        <div>
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">今日概览</h2>
           <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">{activeDate}</p>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
           {[
             ["总比赛", todayMatches.length],
             ["进行中", runningCount],
             ["未开始", upcomingCount],
             ["已结束", finishedCount]
           ].map(([label, value]) => (
-            <div className="rounded-[var(--radius-sm)] bg-[rgba(255,255,255,0.026)] px-3 py-2" key={label}>
-              <p className="text-xs text-[var(--text-tertiary)]">{label}</p>
-              <strong className="mt-1 block text-lg tabular-nums text-[var(--text-primary)]">{loading ? "-" : value}</strong>
+            <div className="border-t border-[var(--border-subtle)] pt-2" key={label}>
+              <strong className="block text-sm font-semibold tabular-nums text-[var(--text-primary)]">{loading ? "-" : value}</strong>
+              <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">{label}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(13,19,30,0.5)] p-4">
-        <div className="mb-3">
+      <section className="space-y-2">
+        <div>
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">重点赛事</h2>
           <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">来自当前日期已载入数据</p>
         </div>
-        <div className="grid gap-2">
+        <div className="grid gap-1">
           {featured.length > 0 ? (
             featured.map((match) => (
-              <div className="rounded-[var(--radius-sm)] bg-[rgba(255,255,255,0.022)] px-3 py-2" key={match.id}>
-                <div className="flex items-center justify-between gap-2">
+              <div className="rounded-[var(--radius-xs)] px-2 py-2 transition-colors duration-150 hover:bg-[rgba(255,255,255,0.024)]" key={match.id}>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2">
                   <span className="truncate text-sm font-medium text-[var(--text-primary)]">{getTeamLabel(match) || match.name}</span>
-                  <span className="shrink-0 text-xs tabular-nums text-[var(--text-tertiary)]">{match.displayTime}</span>
+                  <span className="text-right text-xs tabular-nums text-[var(--text-secondary)]">{match.displayTime}</span>
                 </div>
-                <p className="mt-1 truncate text-xs text-[var(--text-tertiary)]">
+                <p className="mt-0.5 truncate text-xs text-[var(--text-tertiary)]">
                   {GAME_LABELS[match.game]} · {match.tournament}
                 </p>
               </div>
             ))
           ) : (
-            <p className="rounded-[var(--radius-sm)] bg-[rgba(255,255,255,0.022)] px-3 py-2 text-sm text-[var(--text-tertiary)]">
+            <p className="px-2 py-2 text-sm text-[var(--text-tertiary)]">
               {loading ? "赛事载入中" : "当前日期暂无已载入赛事"}
             </p>
           )}
         </div>
       </section>
 
-      <section className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(13,19,30,0.42)] p-4 text-xs leading-5 text-[var(--text-tertiary)]">
-        <p>数据状态</p>
-        <p className="mt-1 text-[var(--text-secondary)]">{updatedAt ? `更新于 ${formatUpdatedAt(updatedAt)}` : "等待首次加载"}</p>
-        {stale ? <p className="mt-1 text-[var(--status-warning)]">正在展示缓存数据</p> : null}
-        {partial ? <p className="mt-1 text-[var(--status-warning)]">部分数据源同步失败</p> : null}
+      <section className="border-t border-[var(--border-subtle)] px-1 pt-3 text-xs leading-5 text-[var(--text-disabled)]">
+        <p className="text-[var(--text-disabled)]">数据状态</p>
+        <p className="mt-1 text-[var(--text-tertiary)]">{updatedAt ? `更新于 ${formatUpdatedAt(updatedAt)}` : "等待首次加载"}</p>
+        {stale ? (
+          <p className="mt-1 inline-flex items-center gap-1.5 text-[var(--text-tertiary)]">
+            <span className="size-1.5 rounded-full bg-[var(--status-warning)] opacity-70" aria-hidden />
+            正在展示缓存数据
+          </p>
+        ) : null}
+        {partial ? (
+          <p className="mt-1 inline-flex items-center gap-1.5 text-[var(--text-tertiary)]">
+            <span className="size-1.5 rounded-full bg-[var(--status-warning)] opacity-70" aria-hidden />
+            部分数据源同步失败
+          </p>
+        ) : null}
       </section>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, RefreshCw, RotateCcw, Filter, ChevronDown } from "lucide-react";
+import { AlertTriangle, ArrowUp, RefreshCw, RotateCcw, Filter, ChevronDown } from "lucide-react";
 import { BEIJING_TIME_ZONE, addBeijingDays, getBeijingTodayDate, getBeijingWeekDates, isValidDateString } from "../shared/date";
 import { MatchPageState, buildMatchPageSearchParams, parseMatchPageState, resetMatchPageState } from "./utils/matchPageState";
 import {
@@ -24,7 +24,6 @@ import { MatchList } from "./components/MatchList";
 import { MatchCalendarPicker } from "./components/MatchCalendarPicker";
 import { formatUpdatedAt, getEmptyStateMessage } from "./utils/matchFormatters";
 import { Button } from "./components/ui/button";
-import { Badge } from "./components/ui/badge";
 import { FilterTabs } from "./components/FilterTabs";
 import { WeekStrip } from "./components/WeekStrip";
 import { AppShell } from "./components/layout/AppShell";
@@ -337,9 +336,7 @@ function App() {
         <div className="app-shell__main-stack">
           <div className="app-shell__desktop-only">
             <TopBar
-              activeDate={activeDate}
               loading={loading}
-              onOpenCalendar={() => setIsCalendarOpen((current) => !current)}
               onRefresh={refresh}
               timezoneLabel="北京时间"
               totalLabel={totalLabel}
@@ -356,20 +353,23 @@ function App() {
             today={today}
           />
 
-          <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-              <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-[minmax(0,1fr)] xl:flex xl:flex-wrap xl:items-start xl:gap-4">
+          <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2" data-filter-toolbar>
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0 flex-1">
               <FilterTabs
+                inlineLabel
                 label="状态"
                 onChange={(value) => updateStatus(value as MatchPageState["status"])}
                 options={MATCH_STATUS_FILTER_OPTIONS}
+                shrinkWrap
                 value={filters.status}
+                wrap
               />
               </div>
 
-              <div className="flex shrink-0 items-center gap-2 xl:pt-6">
+              <div className="flex shrink-0 items-center gap-1.5">
                 <Button
-                  className="gap-2 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]"
+                  className="h-8 gap-1.5 px-3 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]"
                   onClick={() => setShowMoreFilters((current) => !current)}
                   size="sm"
                   variant="ghost"
@@ -378,11 +378,11 @@ function App() {
                   更多筛选
                   <ChevronDown className={`size-3.5 transition-transform duration-300 ${showMoreFilters ? "rotate-180" : ""}`} />
                 </Button>
-                <Button className="gap-2 text-[var(--text-secondary)]" onClick={handleReset} size="sm" type="button" variant="outline">
+                <Button className="h-8 gap-1.5 px-3 text-[var(--text-secondary)]" onClick={handleReset} size="sm" type="button" variant="outline">
                   <RotateCcw className="size-3.5" />
                   <span className="hidden sm:inline">重置</span>
                 </Button>
-                <Button className="gap-2 app-shell__mobile-only-inline-flex" disabled={loading} onClick={refresh} size="sm" type="button" variant="outline">
+                <Button className="h-8 gap-1.5 px-3 app-shell__mobile-only-inline-flex" disabled={loading} onClick={refresh} size="sm" type="button" variant="outline">
                   <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} />
                   <span className="hidden sm:inline">刷新</span>
                 </Button>
@@ -398,7 +398,7 @@ function App() {
                   initial={{ height: 0, opacity: 0, marginTop: 0 }}
                   transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <div className="grid gap-4 border-t border-[var(--border-subtle)] pt-4 sm:grid-cols-2">
+                  <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-3 sm:grid-cols-2">
                     <FilterTabs label="赛区" onChange={(value) => updateField("region", value)} options={regionOptions} value={filters.region} />
                     <FilterTabs
                       isSelected={(value) => (value === "all" ? filters.tier === "all" : selectedTiers.includes(value as MatchTier))}
@@ -413,32 +413,34 @@ function App() {
               ) : null}
             </AnimatePresence>
 
-            <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-tertiary)]">
-              <p>
+            <div className="mt-1.5 min-w-0 text-xs text-[var(--text-tertiary)]">
+              <p className="truncate">
                 {currentGameLabel} · {selectedRegionLabel} · {selectedTierLabel} · {currentStateLabel}
               </p>
             </div>
           </div>
 
           <div className="app-shell__main-inner">
-            <section className="min-w-0 space-y-3">
-              <div className="flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">全部赛事</h2>
-                </div>
-                <Badge tone="neutral">{!error && data ? `${listMatches.length} 场` : totalLabel}</Badge>
+            <section className="min-w-0 space-y-2">
+              <div className="flex min-h-9 items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-1" data-list-header>
+                <h2 className="min-w-0 truncate text-base font-semibold tracking-tight text-[var(--text-primary)]">
+                  全部赛事
+                  <span className="ml-2 text-sm font-medium text-[var(--text-tertiary)]">{!error && data ? `${listMatches.length} 场` : totalLabel}</span>
+                </h2>
               </div>
 
               {statusMessage ? (
-                <div className="rounded-[var(--radius-sm)] border border-[rgba(240,182,90,0.24)] bg-[rgba(240,182,90,0.1)] px-4 py-3 text-sm text-[var(--status-warning)]">
-                  {statusMessage}
+                <div className="flex min-h-8 items-center gap-2 rounded-[var(--radius-xs)] border border-[rgba(217,173,106,0.12)] bg-[rgba(217,173,106,0.055)] px-3 text-xs text-[var(--text-secondary)]" data-status-notice>
+                  <AlertTriangle className="size-3.5 shrink-0 text-[var(--status-warning)] opacity-80" />
+                  <span className="truncate">{statusMessage}</span>
                 </div>
               ) : null}
               {isInitialLoading ? <LoadingState /> : null}
               {!data && error ? <ErrorState message={error.message} onRetry={refresh} /> : null}
               {error && data ? (
-                <div className="rounded-[var(--radius-sm)] border border-[rgba(240,182,90,0.24)] bg-[rgba(240,182,90,0.1)] px-4 py-3 text-sm text-[var(--status-warning)]">
-                  本次同步失败，已保留当前列表。{error.message}
+                <div className="flex min-h-8 items-center gap-2 rounded-[var(--radius-xs)] border border-[rgba(217,173,106,0.12)] bg-[rgba(217,173,106,0.055)] px-3 text-xs text-[var(--text-secondary)]" data-status-notice>
+                  <AlertTriangle className="size-3.5 shrink-0 text-[var(--status-warning)] opacity-80" />
+                  <span className="truncate">本次同步失败，已保留当前列表。{error.message}</span>
                 </div>
               ) : null}
               <AnimatePresence initial={false} mode="wait">
@@ -461,8 +463,9 @@ function App() {
                 ) : null}
               </AnimatePresence>
               {appendError ? (
-                <div className="rounded-[var(--radius-sm)] border border-[rgba(240,182,90,0.24)] bg-[rgba(240,182,90,0.1)] px-4 py-3 text-sm text-[var(--status-warning)]">
-                  加载更多失败，已保留当前列表。{appendError.message}
+                <div className="flex min-h-8 items-center gap-2 rounded-[var(--radius-xs)] border border-[rgba(217,173,106,0.12)] bg-[rgba(217,173,106,0.055)] px-3 text-xs text-[var(--text-secondary)]" data-status-notice>
+                  <AlertTriangle className="size-3.5 shrink-0 text-[var(--status-warning)] opacity-80" />
+                  <span className="truncate">加载更多失败，已保留当前列表。{appendError.message}</span>
                 </div>
               ) : null}
               {data ? (

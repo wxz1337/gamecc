@@ -103,7 +103,7 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
   let previousDate = "";
 
   return (
-    <motion.div className="timeline-list relative z-0 grid gap-2.5" ref={containerRef}>
+    <motion.div className="timeline-list relative z-0 grid gap-2" ref={containerRef}>
       <div aria-hidden ref={topSentinelRef} />
       {matches.map((match) => {
         const shouldShowDate = match.displayDate !== previousDate;
@@ -114,8 +114,9 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
         return (
           <div key={match.id}>
             {shouldShowDate ? (
-              <div className="sticky top-20 z-30 mb-2 inline-flex rounded-full border border-[var(--border-default)] bg-[var(--bg-surface-raised)] px-3 py-1 text-[13px] font-semibold tracking-tight text-[var(--text-secondary)]">
-                {match.displayDate}
+              <div className="sticky top-16 z-30 mb-1.5 flex min-h-8 items-center gap-2.5 text-xs font-medium text-[var(--text-tertiary)]" data-date-group>
+                <span className="shrink-0 text-[var(--text-secondary)]">{match.displayDate}</span>
+                <span className="h-px w-16 bg-[rgba(255,255,255,0.035)] sm:w-24" aria-hidden />
               </div>
             ) : null}
             <motion.div
@@ -143,17 +144,17 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
           transition={{ duration: 0.2, ease: "easeOut" }}
         >
           {Array.from({ length: 3 }).map((_, skeletonIndex) => (
-            <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4" key={`load-more-skeleton-${skeletonIndex}`}>
-              <div className="grid gap-3 sm:grid-cols-[76px_minmax(0,1fr)]">
-                <div className="space-y-2">
+            <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 md:min-h-[84px]" key={`load-more-skeleton-${skeletonIndex}`}>
+              <div className="grid gap-3 md:grid-cols-[76px_minmax(0,1fr)_64px_minmax(0,1fr)_160px_36px] md:items-center">
+                <div className="space-y-1.5">
                   <div className="h-4 w-12 animate-pulse rounded bg-[rgba(207,218,237,0.12)]" />
                   <div className="h-4 w-10 animate-pulse rounded bg-[rgba(207,218,237,0.1)]" />
                 </div>
-                <div className="space-y-2">
-                  <div className="h-4 w-40 animate-pulse rounded bg-[rgba(207,218,237,0.12)]" />
-                  <div className="h-5 w-2/3 animate-pulse rounded bg-[rgba(207,218,237,0.1)]" />
-                  <div className="h-4 w-56 animate-pulse rounded bg-[rgba(207,218,237,0.1)]" />
-                </div>
+                <div className="h-5 w-36 animate-pulse rounded bg-[rgba(207,218,237,0.12)]" />
+                <div className="hidden h-5 w-10 animate-pulse rounded bg-[rgba(207,218,237,0.1)] md:block" />
+                <div className="h-5 w-36 animate-pulse rounded bg-[rgba(207,218,237,0.12)]" />
+                <div className="hidden h-10 w-full animate-pulse rounded bg-[rgba(207,218,237,0.08)] md:block" />
+                <div className="hidden size-8 animate-pulse rounded-full bg-[rgba(207,218,237,0.1)] md:block" />
               </div>
             </div>
           ))}
