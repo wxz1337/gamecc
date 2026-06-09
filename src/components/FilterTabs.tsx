@@ -34,7 +34,7 @@ export function FilterTabs<T extends string>({
 }: FilterTabsProps<T>) {
   return (
     <div className="min-w-0 space-y-2">
-      <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">{label}</p>
+      <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">{label}</p>
       <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-none">
         {options.map((option) => {
           const selected = isSelected ? isSelected(option.value) : value === option.value;
@@ -43,8 +43,8 @@ export function FilterTabs<T extends string>({
             <button
               className={cn(
                 "relative h-8 shrink-0 rounded-full px-3.5 text-sm font-medium transition-all duration-200",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950/10",
-                selected ? "text-zinc-900" : "text-zinc-500 hover:bg-zinc-100/80 hover:text-zinc-800"
+                "focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]",
+                selected ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]"
               )}
               key={option.value}
               onClick={() => onChange(option.value)}
@@ -52,7 +52,7 @@ export function FilterTabs<T extends string>({
             >
               {selected ? (
                 <motion.span
-                  className="absolute inset-0 rounded-full bg-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] ring-1 ring-zinc-900/5"
+                  className="absolute inset-0 rounded-full bg-[var(--brand-soft)] ring-1 ring-[var(--brand-border)]"
                   layoutId={multiSelect ? `${label}-${option.value}-active-tab` : `${label}-active-tab`}
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />

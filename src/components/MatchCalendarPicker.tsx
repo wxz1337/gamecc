@@ -94,7 +94,7 @@ export function MatchCalendarPicker({
   return (
     <>
       <motion.div
-        className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm sm:hidden"
+        className="fixed inset-0 z-50 bg-black/45 sm:hidden"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

@@ -1,18 +1,18 @@
 # Project Status
 
-更新时间：2026-06-01
+更新时间：2026-06-09
 
 ## 总体判断
 
-当前项目已完成 `0.8.0` 版本标记更新，并继续沿用 `0.7.0` 的个人观赛面板和 `0.6.0` Supabase 使用优化基线。它在 `0.5.0` 持久化缓存基础上，补强了 Supabase 类型边界、查询字段投影、批量写入稳定性、数据库索引和更新时间维护。
+当前项目已完成 `0.9.0` 战队图标本地缓存版本，并已部署到 `https://esportscc.app`。它在 `0.6.0` Supabase 使用优化基线之上，新增战队元数据持久化、本地图标缓存和更稳定的 `/api/team-icons/...` 图标访问路径。
 
 从当前定位看：
 
 - 个人使用可用性：完成
-- `0.8.0` 版本标记：完成
+- `0.9.0` 图标缓存版本：完成并已部署
 - 重大 bug 风险：未发现
+- 后续重点：观察战队图标缓存命中率、失败重试和部署目录持久性
 - 后续重点：规划收藏关注、提醒、日历订阅或个人偏好排序
-- 后续重点：观察 Supabase freshness、写入与查询表现，必要时细化同步监控
 
 ## 当前能力
 
@@ -67,10 +67,13 @@
   - `matches`
   - `match_fetch_windows`
   - `sync_runs`
+  - `teams`
 - 支持源窗口 freshness 检查、in-flight dedupe 和 stale fallback。
 - Supabase client 已绑定服务端 schema 类型。
 - Supabase repository 使用显式字段投影，避免 `select("*")`。
 - `matches` 批量 upsert 已按固定大小分片。
+- 支持战队图标后台下载和本地缓存，真实战队优先返回 `/api/team-icons/...` URL。
+- `/api/team-icons/:fileName` 支持文件名白名单、路径边界校验、图片 Content-Type 和 24 小时缓存头。
 
 ### 数据与缓存
 
@@ -79,6 +82,7 @@
 - Supabase 未配置时自动回退到现有 PandaScore + 内存缓存路径。
 - 前端批量加载将首屏和日期切换请求范围扩展到本周最后一天，降低按天请求次数。
 - Supabase 迁移已补充贴合查询路径的复合索引，并由数据库 trigger 自动维护缓存表 `updated_at`。
+- `teams` 表保存战队原始图标 URL 和本地图标缓存 URL，服务器 `cache/team-icons/` 保存已下载文件。
 
 ### 数据
 
@@ -117,6 +121,8 @@ npm run build
 - 生产构建通过。
 - 轻量人工验收清单见 [frontend-acceptance-checklist.md](./frontend-acceptance-checklist.md)。
 - v0.8.0 版本标记已通过类型检查、测试和生产构建。
+- v0.9.0 版本已通过类型检查、测试、生产构建、远程 Supabase migration 和线上接口验证。
+- 线上 `/api/matches?date=2026-06-09&game=all&refresh=1` 返回 6 场比赛，12 个真实战队均使用 `/api/team-icons/...` 本地图标 URL。
 
 ## 已知取舍
 
@@ -125,11 +131,12 @@ npm run build
 - PandaScore 免费接口字段偶尔不完整，页面以可选字段方式展示。
 - Supabase 依赖需要在部署环境中正确配置服务端环境变量。
 - v0.6.0 Supabase 索引与 trigger 迁移已执行并验证，remote migration history 已与本地 `20260526`、`20260527` 对齐。
+- v0.9.0 `teams` migration 已执行并验证，服务器 `cache/team-icons/` 目录需要保持可写并尽量持久化。
 - `.env.local` 本地存在真实 token 时必须继续保持忽略。
 
 ## 建议下一步
 
-1. 保留当前状态作为 `0.8.0` 基线。
+1. 保留当前状态作为 `0.9.0` 基线。
 2. 用真实 PandaScore token 持续点验几个常用筛选组合。
 3. 在手机宽度下看一遍日期切换、筛选、详情展开。
-4. 继续观察 Supabase freshness、写入和查询表现，必要时增加同步监控。
+4. 继续观察图标缓存下载失败日志、Supabase freshness、写入和查询表现，必要时增加同步监控。

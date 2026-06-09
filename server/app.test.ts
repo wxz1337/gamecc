@@ -1,5 +1,7 @@
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ERROR_CODES } from "../shared/errors.js";
 import type { MatchesResponse } from "../shared/match.js";
@@ -11,6 +13,9 @@ vi.mock("./services/matchService.js", () => ({
 }));
 
 const mockedGetMatches = vi.mocked(getMatches);
+const teamIconsDir = resolve(process.cwd(), "cache", "team-icons");
+const testIconFileName = "app-test-team.png";
+const testIconPath = resolve(teamIconsDir, testIconFileName);
 
 const sampleResponse: MatchesResponse = {
   date: "2026-05-24",
@@ -96,6 +101,8 @@ describe("API app", () => {
         resolve();
       });
     });
+
+    rmSync(testIconPath, { force: true });
   });
 
   it("returns health information", async () => {
@@ -142,5 +149,30 @@ describe("API app", () => {
       }
     });
     expect(mockedGetMatches).not.toHaveBeenCalled();
+  });
+
+  it("serves cached team icons with long-lived cache headers", async () => {
+    const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+    mkdirSync(teamIconsDir, { recursive: true });
+    writeFileSync(testIconPath, pngBytes);
+
+    const response = await fetch(`${baseUrl}/api/team-icons/${testIconFileName}`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("image/png");
+    expect(response.headers.get("cache-control")).toBe("public, max-age=86400, immutable");
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(pngBytes);
+  });
+
+  it("rejects invalid team icon file names", async () => {
+    const response = await fetch(`${baseUrl}/api/team-icons/.env`);
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects unsupported team icon extensions", async () => {
+    const response = await fetch(`${baseUrl}/api/team-icons/team.txt`);
+
+    expect(response.status).toBe(400);
   });
 });

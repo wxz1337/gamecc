@@ -1,10 +1,11 @@
 @import "tailwindcss";
+@import "./styles/tokens.css";
 
 :root {
-  color: #09090b;
-  background: #fafafa;
+  color: var(--text-primary);
+  background: var(--bg-app);
   font-family:
-    Inter, "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    Inter, "SF Pro Display", "SF Pro Text", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,13 +18,22 @@
 }
 
 html {
-  background: #fafafa;
+  background:
+    radial-gradient(circle at 58% -12%, var(--bg-app-radial), transparent 34rem),
+    radial-gradient(circle at 8% 0%, rgba(88, 183, 255, 0.045), transparent 30rem),
+    var(--bg-app);
+  color: var(--text-primary);
+  scrollbar-color: rgba(207, 218, 237, 0.22) transparent;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  color: var(--text-primary);
+  background:
+    linear-gradient(180deg, rgba(13, 19, 30, 0.72), rgba(7, 11, 18, 0) 320px),
+    transparent;
 }
 
 button,
@@ -35,6 +45,41 @@ select {
 
 button {
   cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+::selection {
+  color: var(--text-primary);
+  background: rgba(124, 92, 255, 0.34);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(207, 218, 237, 0.22);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(207, 218, 237, 0.34);
+  background-clip: content-box;
 }
 
 #root {
@@ -53,6 +98,101 @@ button {
   overflow-anchor: auto;
 }
 
+.app-shell {
+  display: grid;
+  width: min(100%, var(--app-max-width));
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: var(--space-3);
+}
+
+.app-shell__sidebar,
+.app-shell__right-rail,
+.app-shell__desktop-only {
+  display: none;
+}
+
+.app-shell__mobile-only-inline-flex {
+  display: inline-flex;
+}
+
+.app-shell__main {
+  min-width: 0;
+}
+
+.app-shell__mobile-header {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.app-shell__main-stack {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.app-shell__main-inner {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.app-shell__panel {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+
+@media (min-width: 640px) {
+  .app-shell {
+    padding: var(--space-4);
+  }
+}
+
+@media (min-width: 960px) {
+  .app-shell {
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+
+  .app-shell__sidebar {
+    position: sticky;
+    top: var(--space-4);
+    display: block;
+    height: calc(100vh - var(--space-4) * 2);
+    min-width: 0;
+  }
+
+  .app-shell__mobile-header {
+    display: none;
+  }
+
+  .app-shell__desktop-only {
+    display: block;
+  }
+
+  .app-shell__mobile-only-inline-flex {
+    display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  .app-shell {
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--right-rail-width);
+    gap: var(--space-5);
+  }
+
+  .app-shell__right-rail {
+    position: sticky;
+    top: var(--space-4);
+    display: block;
+    height: calc(100vh - var(--space-4) * 2);
+    min-width: 0;
+  }
+}
+
 .match-calendar-panel {
   position: fixed;
   top: 72px;
@@ -61,12 +201,11 @@ button {
   width: min(640px, calc(100vw - 32px));
   max-height: calc(100vh - 96px);
   overflow: auto;
-  border: 1px solid rgba(228, 228, 231, 0.6);
-  border-radius: 20px;
-  color: rgb(9 9 11);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  background: var(--bg-surface-raised);
+  box-shadow: var(--shadow-raised);
 }
 
 .match-calendar-panel__header {
@@ -75,7 +214,7 @@ button {
   align-items: center;
   min-height: 60px;
   padding: 0 16px;
-  border-bottom: 1px solid rgba(228, 228, 231, 0.6);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .match-calendar-panel__nav {
@@ -85,7 +224,7 @@ button {
   height: 36px;
   border: 0;
   border-radius: 99px;
-  color: rgb(113 113 122);
+  color: var(--text-secondary);
   background: transparent;
   font-size: 1.4rem;
   line-height: 1;
@@ -95,8 +234,8 @@ button {
 }
 
 .match-calendar-panel__nav:hover {
-  color: rgb(9 9 11);
-  background: rgba(244, 244, 245, 0.8);
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
 }
 
 .match-calendar-panel__title {
@@ -118,7 +257,7 @@ button {
   display: grid;
   place-items: center;
   min-height: 30px;
-  color: rgb(82 82 91);
+  color: var(--text-secondary);
   font-size: 0.82rem;
   font-weight: 700;
 }
@@ -136,31 +275,31 @@ button {
   min-height: 58px;
   border: 1px solid transparent;
   border-radius: 12px;
-  color: rgb(24 24 27);
+  color: var(--text-primary);
   background: transparent;
   transition: all 200ms ease;
 }
 
 .match-calendar-day:hover {
-  background: rgba(244, 244, 245, 0.8);
+  background: var(--bg-surface-hover);
   transform: translateY(-1px);
 }
 
 .match-calendar-day.is-in-selected-week {
-  background: rgba(244, 244, 245, 0.5);
+  background: rgba(124, 92, 255, 0.07);
 }
 
 .match-calendar-day.is-selected {
   z-index: 1;
-  border-color: rgb(24 24 27);
-  color: white;
-  background: rgb(24 24 27);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-color: var(--brand-border);
+  color: var(--text-primary);
+  background: var(--brand-soft);
+  box-shadow: var(--brand-glow);
   transform: translateY(-1px);
 }
 
 .match-calendar-day.is-muted {
-  color: rgb(161 161 170);
+  color: var(--text-disabled);
 }
 
 .match-calendar-day.is-today::after {
@@ -170,7 +309,7 @@ button {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: rgb(245 158 11);
+  background: var(--brand-primary);
   content: "";
 }
 
@@ -182,13 +321,13 @@ button {
 
 .match-calendar-day__count {
   min-height: 18px;
-  color: rgb(82 82 91);
+  color: var(--text-tertiary);
   font-size: 0.72rem;
   font-weight: 700;
 }
 
 .match-calendar-day.is-selected .match-calendar-day__count {
-  color: rgb(212 212 216);
+  color: var(--text-secondary);
 }
 
 .match-calendar-panel__footer {
@@ -197,10 +336,10 @@ button {
   gap: 12px;
   align-items: center;
   padding: 16px;
-  border-top: 1px solid rgba(228, 228, 231, 0.6);
-  background: rgba(250, 250, 250, 0.5);
-  border-bottom-left-radius: 20px;
-  border-bottom-right-radius: 20px;
+  border-top: 1px solid var(--border-default);
+  background: rgba(7, 11, 18, 0.36);
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
 }
 
 .match-calendar-confirm-button,
@@ -217,24 +356,25 @@ button {
   gap: 8px;
   padding: 0 16px;
   border: 0;
-  color: white;
-  background: rgb(24 24 27);
+  color: var(--text-primary);
+  background: var(--brand-primary);
 }
 
 .match-calendar-confirm-button:hover {
-  background: rgb(39 39 42);
+  background: var(--brand-primary-hover);
   transform: translateY(-1px);
 }
 
 .match-calendar-close-button {
   padding: 0 16px;
-  border: 1px solid rgb(228 228 231);
-  color: rgb(39 39 42);
-  background: white;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
 }
 
 .match-calendar-close-button:hover {
-  background: rgb(250 250 250);
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
 }
 
 .match-calendar-summary {
@@ -243,7 +383,7 @@ button {
   align-items: baseline;
   min-width: 0;
   margin: 0;
-  color: rgb(82 82 91);
+  color: var(--text-secondary);
   font-size: 0.88rem;
 }
 
@@ -256,7 +396,7 @@ button {
 }
 
 .match-calendar-summary strong {
-  color: rgb(9 9 11);
+  color: var(--text-primary);
 }
 
 @media (max-width: 640px) {

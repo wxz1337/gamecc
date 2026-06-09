@@ -16,7 +16,8 @@ import {
   MatchSort,
   MatchStatus,
   MatchStatusFilter,
-  MatchesResponse
+  MatchesResponse,
+  Team
 } from "../../shared/match.js";
 import { mapPandaScoreMatch } from "../mappers/pandascoreMapper.js";
 import { PandaScoreMatch } from "../types/pandascore.js";
@@ -29,6 +30,8 @@ import {
   upsertSuccessWindow
 } from "../repositories/syncWindowRepository.js";
 import { queryMatchesByDateRange, upsertMatches } from "../repositories/matchRepository.js";
+import { upsertTeams, teamToRow, queryTeamsByIds } from "../repositories/teamRepository.js";
+import { enrichTeamIcons, downloadTeamsConcurrently } from "./teamIconService.js";
 import { isSupabaseConfigured } from "./supabaseClient.js";
 import { runWithInFlightDeduplication } from "./inFlightRequestService.js";
 import { fetchPandaScoreMatches } from "./pandascoreClient.js";
@@ -474,6 +477,7 @@ async function fetchAndPersistMissingFinishedRange(
       const dailyRanges = expandDateRangeToDailyRanges(range);
 
       await upsertMatches(matches);
+      await upsertTeamsFromMatches(matches);
       await Promise.all(
         dailyRanges.map((dailyRange) =>
           upsertSuccessWindow({
@@ -607,6 +611,86 @@ function mapRawMatches(game: GameType, rawMatches: PandaScoreMatch[]): Match[] {
   return rawMatches.map((match) => mapPandaScoreMatch(match, game));
 }
 
+function extractTeamsFromMatches(matches: Match[]): Team[] {
+  const seen = new Set<string>();
+  const teams: Team[] = [];
+
+  for (const match of matches) {
+    for (const team of match.teams) {
+      const key = team.id ?? team.name;
+      if (team.name !== "TBD" && !seen.has(key)) {
+        seen.add(key);
+        teams.push(team);
+      }
+    }
+  }
+
+  return teams;
+}
+
+async function upsertTeamsFromMatches(matches: Match[]): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    return;
+  }
+
+  const teams = extractTeamsFromMatches(matches);
+  if (teams.length === 0) {
+    return;
+  }
+
+  try {
+    await upsertTeams(teams.map(teamToRow));
+  } catch {
+    // non-critical: team metadata is supplementary
+  }
+}
+
+async function enrichMatchesWithTeamCache(matches: Match[]): Promise<Match[]> {
+  if (matches.length === 0 || !isSupabaseConfigured()) {
+    return matches;
+  }
+
+  try {
+    const teams = extractTeamsFromMatches(matches);
+    if (teams.length === 0) {
+      return matches;
+    }
+
+    const teamIds = teams.map((t) => t.id ?? t.name);
+    const teamRows = await queryTeamsByIds(teamIds);
+    const teamMap = new Map(teamRows.map((row) => [row.id, row]));
+
+    return matches.map((match) => ({
+      ...match,
+      teams: match.teams.map((team) => {
+        const key = team.id ?? team.name;
+        return enrichTeamIcons(team, teamMap.get(key));
+      })
+    }));
+  } catch {
+    return matches;
+  }
+}
+
+function cacheTeamIconsBackground(matches: Match[]): void {
+  if (!isSupabaseConfigured()) {
+    return;
+  }
+
+  const teams = extractTeamsFromMatches(matches);
+  if (teams.length === 0) {
+    return;
+  }
+
+  const teamIds = teams.map((t) => t.id ?? t.name);
+
+  queryTeamsByIds(teamIds)
+    .then((rows) => downloadTeamsConcurrently(rows))
+    .catch(() => {
+      // fire-and-forget: icon download failure is non-critical
+    });
+}
+
 async function fetchDirectGameMatches(
   query: MatchQuery,
   game: GameType,
@@ -710,6 +794,7 @@ async function resolveGameWithSupabase(
         const matches = mapRawMatches(game, rawMatches);
 
         await upsertMatches(matches);
+        await upsertTeamsFromMatches(matches);
         await upsertSuccessWindow({
           source: "pandascore",
           game,
@@ -910,8 +995,10 @@ export async function getMatches(query: MatchQuery): Promise<MatchesResponse> {
     }
 
     const mappedMatches = sortByBeginAt(groups.flatMap((group) => group.matches));
-    const filteredMatches = applyFilters(mappedMatches, query);
-    const facets = buildMatchFacets(mappedMatches);
+    const enrichedMatches = await enrichMatchesWithTeamCache(mappedMatches);
+    cacheTeamIconsBackground(mappedMatches);
+    const filteredMatches = applyFilters(enrichedMatches, query);
+    const facets = buildMatchFacets(enrichedMatches);
     const response = createResponse(query, sortMatches(filteredMatches, query.sort), facets, warnings, stale);
 
     if (!response.partial) {

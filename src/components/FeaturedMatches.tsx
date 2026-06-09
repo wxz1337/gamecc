@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Radio, Trophy } from "lucide-react";
 import type { Match } from "../../shared/match";
@@ -32,6 +33,7 @@ function getPriority(match: Match) {
 }
 
 export function FeaturedMatches({ matches, title = "重点赛事" }: FeaturedMatchesProps) {
+  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
   const featured = [...matches]
     .sort((left, right) => getPriority(left) - getPriority(right) || left.beginAt.localeCompare(right.beginAt))
     .slice(0, 3);
@@ -83,11 +85,19 @@ export function FeaturedMatches({ matches, title = "重点赛事" }: FeaturedMat
                   
                   <div className="grid grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)] items-center gap-3">
                     <div className="flex min-w-0 items-center gap-2">
-                      {leftTeam?.imageUrl ? (
-                        <img src={leftTeam.imageUrl} alt="" className="size-8 rounded-full bg-white object-contain p-1 ring-1 ring-black/5" />
-                      ) : (
-                        <div className="flex size-8 items-center justify-center rounded-full bg-white text-[10px] font-bold text-zinc-300 ring-1 ring-black/5">TBD</div>
-                      )}
+                      {(() => {
+                        const logo = leftTeam?.darkModeImageUrl || leftTeam?.imageUrl;
+                        return logo && !imgErrors[logo] ? (
+                          <img
+                            src={logo}
+                            alt=""
+                            className="size-8 rounded-full object-contain p-1 ring-1 ring-black/5"
+                            onError={() => setImgErrors((prev) => ({ ...prev, [logo]: true }))}
+                          />
+                        ) : (
+                          <div className="flex size-8 items-center justify-center rounded-full bg-white text-[10px] font-bold text-zinc-300 ring-1 ring-black/5">TBD</div>
+                        );
+                      })()}
                       <span className="min-w-0 truncate text-sm font-semibold text-zinc-900">
                         {leftTeam?.acronym || leftTeam?.name || "TBD"}
                       </span>
@@ -105,11 +115,19 @@ export function FeaturedMatches({ matches, title = "重点赛事" }: FeaturedMat
                       <span className="min-w-0 truncate text-right text-sm font-semibold text-zinc-900">
                         {rightTeam?.acronym || rightTeam?.name || "TBD"}
                       </span>
-                      {rightTeam?.imageUrl ? (
-                        <img src={rightTeam.imageUrl} alt="" className="size-8 rounded-full bg-white object-contain p-1 ring-1 ring-black/5" />
-                      ) : (
-                        <div className="flex size-8 items-center justify-center rounded-full bg-white text-[10px] font-bold text-zinc-300 ring-1 ring-black/5">TBD</div>
-                      )}
+                      {(() => {
+                        const logo = rightTeam?.darkModeImageUrl || rightTeam?.imageUrl;
+                        return logo && !imgErrors[logo] ? (
+                          <img
+                            src={logo}
+                            alt=""
+                            className="size-8 rounded-full object-contain p-1 ring-1 ring-black/5"
+                            onError={() => setImgErrors((prev) => ({ ...prev, [logo]: true }))}
+                          />
+                        ) : (
+                          <div className="flex size-8 items-center justify-center rounded-full bg-white text-[10px] font-bold text-zinc-300 ring-1 ring-black/5">TBD</div>
+                        );
+                      })()}
                     </div>
                   </div>
 

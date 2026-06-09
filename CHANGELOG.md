@@ -4,6 +4,34 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，版本号遵循轻量 SemVer。
 
+## [0.9.0] - 2026-06-09
+
+### Added
+
+- 新增 `teams` Supabase 表，保存 PandaScore 战队元数据和本地图标缓存 URL。
+- 新增战队图标缓存服务，将 PandaScore 图标下载到服务器 `cache/team-icons/` 并通过 `/api/team-icons/:fileName` 提供稳定访问。
+- 新增响应增强逻辑，赛程返回时优先使用本地图标 URL，PandaScore CDN 不可用时仍可展示已缓存图标。
+- 新增桌面应用式布局组件和新版样式 token，优化赛事面板的信息密度和视觉层级。
+
+### Changed
+
+- `/api/team-icons/:fileName` 使用文件名白名单、路径边界校验、图片类型响应和 24 小时缓存头。
+- 图标下载改为非阻塞后台任务，下载失败不影响 `/api/matches` 返回，下次同步可继续重试。
+- 项目版本号提升至 `0.9.0`。
+
+### Fixed
+
+- 修复真实战队已返回但图标外链失效时，前端可能显示空图标或退化为占位状态的问题。
+- 修复 Supabase 测试中历史日期与 fresh-window 分支在当前日期变化后不稳定的问题。
+
+### Verified
+
+- `npm run typecheck` 通过。
+- `npm test` 通过。
+- `npm run build` 通过。
+- 远程 Supabase migration `20260609_create_teams_table.sql` 已执行。
+- 已部署到 `https://esportscc.app`，线上 `/api/matches` 返回的 12 个真实战队均使用 `/api/team-icons/...` 本地图标 URL。
+
 ## [0.8.0] - 2026-06-01
 
 ### Changed

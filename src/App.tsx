@@ -27,7 +27,11 @@ import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
 import { FilterTabs } from "./components/FilterTabs";
 import { WeekStrip } from "./components/WeekStrip";
-import { DashboardHero } from "./components/DashboardHero";
+import { AppShell } from "./components/layout/AppShell";
+import { MobileHeader } from "./components/layout/MobileHeader";
+import { RightRail } from "./components/layout/RightRail";
+import { SidebarNav } from "./components/layout/SidebarNav";
+import { TopBar } from "./components/layout/TopBar";
 import type { MatchTier } from "../shared/match";
 
 const TIER_ORDER: MatchTier[] = ["S", "A", "B", "C"];
@@ -154,7 +158,6 @@ function App() {
   const currentStateLabel = formatStatusFilterLabel(filters.status);
   const currentGameLabel = filters.game === "all" ? "全部游戏" : GAME_LABELS[filters.game];
   const totalLabel = data ? `${data.total} 场` : loading ? "同步中" : "未载入";
-  const runningCount = data?.matches.filter((match) => match.status === "running").length ?? 0;
   const listMatches = useMemo(() => {
     if (!data) {
       return [];
@@ -313,10 +316,36 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
+  const gameFilterTabs = <FilterTabs label="游戏" onChange={updateGame} options={GAME_FILTER_OPTIONS} value={filters.game} />;
+
   return (
-    <div className="min-h-screen bg-[#fafafa] text-zinc-950 font-sans selection:bg-zinc-200">
-      <div className="sticky top-0 z-40 border-b border-zinc-200/60 bg-white/80 pb-3 pt-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)] font-sans">
+      <AppShell
+        mobileHeader={<MobileHeader activeDate={activeDate} gameFilter={gameFilterTabs} totalLabel={totalLabel} />}
+        rightRail={
+          <RightRail
+            activeDate={activeDate}
+            loading={loading}
+            matches={data?.matches ?? []}
+            partial={data?.partial}
+            stale={data?.stale}
+            updatedAt={data?.updatedAt}
+          />
+        }
+        sidebar={<SidebarNav onGameChange={updateGame} selectedGame={filters.game} />}
+      >
+        <div className="app-shell__main-stack">
+          <div className="app-shell__desktop-only">
+            <TopBar
+              activeDate={activeDate}
+              loading={loading}
+              onOpenCalendar={() => setIsCalendarOpen((current) => !current)}
+              onRefresh={refresh}
+              timezoneLabel="北京时间"
+              totalLabel={totalLabel}
+            />
+          </div>
+
           <WeekStrip
             dates={weekDates}
             isCalendarOpen={isCalendarOpen}
@@ -326,149 +355,148 @@ function App() {
             selectedDate={activeDate}
             today={today}
           />
-        </div>
-      </div>
 
-      <main className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
-        <DashboardHero activeDate={activeDate} runningCount={runningCount} totalLabel={totalLabel} />
-
-        <div className="rounded-xl border border-zinc-200/70 bg-white/75 p-3 sm:p-4">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-            <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:flex xl:flex-wrap xl:items-start xl:gap-4">
-              <FilterTabs label="游戏" onChange={updateGame} options={GAME_FILTER_OPTIONS} value={filters.game} />
+          <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+              <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-[minmax(0,1fr)] xl:flex xl:flex-wrap xl:items-start xl:gap-4">
               <FilterTabs
                 label="状态"
                 onChange={(value) => updateStatus(value as MatchPageState["status"])}
                 options={MATCH_STATUS_FILTER_OPTIONS}
                 value={filters.status}
               />
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2 xl:pt-6">
-              <Button
-                className="gap-2 text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
-                onClick={() => setShowMoreFilters((current) => !current)}
-                size="sm"
-                variant="ghost"
-              >
-                <Filter className="size-4" />
-                更多筛选
-                <ChevronDown className={`size-3.5 transition-transform duration-300 ${showMoreFilters ? "rotate-180" : ""}`} />
-              </Button>
-              <Button className="gap-2 text-zinc-600" onClick={handleReset} size="sm" type="button" variant="outline">
-                <RotateCcw className="size-3.5" />
-                <span className="hidden sm:inline">重置</span>
-              </Button>
-              <Button className="gap-2" disabled={loading} onClick={refresh} size="sm" type="button" variant="outline">
-                <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} />
-                <span className="hidden sm:inline">刷新</span>
-              </Button>
-            </div>
-          </div>
-
-          <AnimatePresence initial={false}>
-            {showMoreFilters ? (
-              <motion.div
-                animate={{ height: "auto", opacity: 1, marginTop: 12 }}
-                className="overflow-hidden"
-                exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="grid gap-4 border-t border-zinc-200/70 pt-4 sm:grid-cols-2">
-                  <FilterTabs label="赛区" onChange={(value) => updateField("region", value)} options={regionOptions} value={filters.region} />
-                  <FilterTabs
-                    isSelected={(value) => (value === "all" ? filters.tier === "all" : selectedTiers.includes(value as MatchTier))}
-                    label="赛事级别"
-                    multiSelect
-                    onChange={(value) => updateTier(value as "all" | MatchTier)}
-                    options={TIER_FILTER_OPTIONS}
-                    value={filters.tier}
-                  />
-                </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-
-          <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500">
-            <p>
-              {currentGameLabel} · {selectedRegionLabel} · {selectedTierLabel} · {currentStateLabel}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-5">
-          <section className="min-w-0 space-y-3">
-            <div className="flex items-end justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="text-xl font-semibold tracking-tight text-zinc-950">全部赛事</h2>
               </div>
-              <Badge tone="neutral">{!error && data ? `${listMatches.length} 场` : totalLabel}</Badge>
-            </div>
 
-            {statusMessage ? <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{statusMessage}</div> : null}
-            {isInitialLoading ? <LoadingState /> : null}
-            {!data && error ? <ErrorState message={error.message} onRetry={refresh} /> : null}
-            {error && data ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                本次同步失败，已保留当前列表。{error.message}
-              </div>
-            ) : null}
-            <AnimatePresence initial={false} mode="wait">
-              {data && listMatches.length > 0 ? (
-                <motion.div
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  initial={{ opacity: 0, y: 8 }}
-                  key={listTransitionKey}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
+              <div className="flex shrink-0 items-center gap-2 xl:pt-6">
+                <Button
+                  className="gap-2 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]"
+                  onClick={() => setShowMoreFilters((current) => !current)}
+                  size="sm"
+                  variant="ghost"
                 >
-                  <MatchList
-                    isLoadingMore={isLoadingMore}
-                    matches={listMatches}
-                    onNearEnd={loadFutureMatches}
-                    onNearStart={loadPreviousMatches}
-                    onVisibleDateChange={handleVisibleDateChange}
-                  />
+                  <Filter className="size-4" />
+                  更多筛选
+                  <ChevronDown className={`size-3.5 transition-transform duration-300 ${showMoreFilters ? "rotate-180" : ""}`} />
+                </Button>
+                <Button className="gap-2 text-[var(--text-secondary)]" onClick={handleReset} size="sm" type="button" variant="outline">
+                  <RotateCcw className="size-3.5" />
+                  <span className="hidden sm:inline">重置</span>
+                </Button>
+                <Button className="gap-2 app-shell__mobile-only-inline-flex" disabled={loading} onClick={refresh} size="sm" type="button" variant="outline">
+                  <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} />
+                  <span className="hidden sm:inline">刷新</span>
+                </Button>
+              </div>
+            </div>
+
+            <AnimatePresence initial={false}>
+              {showMoreFilters ? (
+                <motion.div
+                  animate={{ height: "auto", opacity: 1, marginTop: 12 }}
+                  className="overflow-hidden"
+                  exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                  initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <div className="grid gap-4 border-t border-[var(--border-subtle)] pt-4 sm:grid-cols-2">
+                    <FilterTabs label="赛区" onChange={(value) => updateField("region", value)} options={regionOptions} value={filters.region} />
+                    <FilterTabs
+                      isSelected={(value) => (value === "all" ? filters.tier === "all" : selectedTiers.includes(value as MatchTier))}
+                      label="赛事级别"
+                      multiSelect
+                      onChange={(value) => updateTier(value as "all" | MatchTier)}
+                      options={TIER_FILTER_OPTIONS}
+                      value={filters.tier}
+                    />
+                  </div>
                 </motion.div>
               ) : null}
             </AnimatePresence>
-            {appendError ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                加载更多失败，已保留当前列表。{appendError.message}
-              </div>
-            ) : null}
-            {data ? (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 text-sm text-zinc-600">
-                <span>
-                  {timelineComplete
-                    ? `已显示到本周最后一天 ${timelineBounds.to}`
-                    : isLoadingMore
-                      ? `正在加载更多赛程，当前已显示到 ${loadedTimelineTo}`
-                      : `已加载到 ${loadedTimelineTo}，继续向下滚动或点击加载到 ${timelineBounds.to}`}
-                </span>
-                {!timelineComplete ? (
-                  <Button disabled={loading} onClick={loadFutureMatches} type="button" variant="outline">
-                    <RefreshCw className={isLoadingMore ? "size-4 animate-spin" : "size-4"} />
-                    加载更多
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
-            {!loading && !error && data && listMatches.length === 0 ? <EmptyState message={getEmptyStateMessage(filters)} /> : null}
-          </section>
-        </div>
 
-        <footer className="flex flex-col justify-between gap-2 border-t border-zinc-200 py-5 text-sm text-zinc-500 sm:flex-row">
-          <span>PandaScore API · 时区 {BEIJING_TIME_ZONE}</span>
-          <span>最近更新时间：{data?.updatedAt ? formatUpdatedAt(data.updatedAt) : "等待首次加载"}</span>
-        </footer>
-      </main>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-tertiary)]">
+              <p>
+                {currentGameLabel} · {selectedRegionLabel} · {selectedTierLabel} · {currentStateLabel}
+              </p>
+            </div>
+          </div>
+
+          <div className="app-shell__main-inner">
+            <section className="min-w-0 space-y-3">
+              <div className="flex items-end justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">全部赛事</h2>
+                </div>
+                <Badge tone="neutral">{!error && data ? `${listMatches.length} 场` : totalLabel}</Badge>
+              </div>
+
+              {statusMessage ? (
+                <div className="rounded-[var(--radius-sm)] border border-[rgba(240,182,90,0.24)] bg-[rgba(240,182,90,0.1)] px-4 py-3 text-sm text-[var(--status-warning)]">
+                  {statusMessage}
+                </div>
+              ) : null}
+              {isInitialLoading ? <LoadingState /> : null}
+              {!data && error ? <ErrorState message={error.message} onRetry={refresh} /> : null}
+              {error && data ? (
+                <div className="rounded-[var(--radius-sm)] border border-[rgba(240,182,90,0.24)] bg-[rgba(240,182,90,0.1)] px-4 py-3 text-sm text-[var(--status-warning)]">
+                  本次同步失败，已保留当前列表。{error.message}
+                </div>
+              ) : null}
+              <AnimatePresence initial={false} mode="wait">
+                {data && listMatches.length > 0 ? (
+                  <motion.div
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    initial={{ opacity: 0, y: 8 }}
+                    key={listTransitionKey}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                  >
+                    <MatchList
+                      isLoadingMore={isLoadingMore}
+                      matches={listMatches}
+                      onNearEnd={loadFutureMatches}
+                      onNearStart={loadPreviousMatches}
+                      onVisibleDateChange={handleVisibleDateChange}
+                    />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+              {appendError ? (
+                <div className="rounded-[var(--radius-sm)] border border-[rgba(240,182,90,0.24)] bg-[rgba(240,182,90,0.1)] px-4 py-3 text-sm text-[var(--status-warning)]">
+                  加载更多失败，已保留当前列表。{appendError.message}
+                </div>
+              ) : null}
+              {data ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+                  <span>
+                    {timelineComplete
+                      ? `已显示到本周最后一天 ${timelineBounds.to}`
+                      : isLoadingMore
+                        ? `正在加载更多赛程，当前已显示到 ${loadedTimelineTo}`
+                        : `已加载到 ${loadedTimelineTo}，继续向下滚动或点击加载到 ${timelineBounds.to}`}
+                  </span>
+                  {!timelineComplete ? (
+                    <Button disabled={loading} onClick={loadFutureMatches} type="button" variant="outline">
+                      <RefreshCw className={isLoadingMore ? "size-4 animate-spin" : "size-4"} />
+                      加载更多
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+              {!loading && !error && data && listMatches.length === 0 ? <EmptyState message={getEmptyStateMessage(filters)} /> : null}
+            </section>
+          </div>
+
+          <footer className="flex flex-col justify-between gap-2 border-t border-[var(--border-subtle)] py-5 text-sm text-[var(--text-tertiary)] sm:flex-row">
+            <span>PandaScore API · 时区 {BEIJING_TIME_ZONE}</span>
+            <span>最近更新时间：{data?.updatedAt ? formatUpdatedAt(data.updatedAt) : "等待首次加载"}</span>
+          </footer>
+        </div>
+      </AppShell>
 
       {showScrollToTop ? (
         <Button
           aria-label="回到顶部"
-          className="fixed bottom-4 right-4 z-50 h-11 w-11 rounded-full shadow-lg shadow-zinc-950/15"
+          className="fixed bottom-4 right-4 z-50 h-11 w-11 rounded-full"
           onClick={scrollToTop}
           size="icon"
           type="button"

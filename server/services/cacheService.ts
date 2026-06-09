@@ -109,3 +109,7 @@ export function set<T>(key: string, value: T, ttlSeconds = getCacheTtlSeconds())
     expiresAt: now + ttlMilliseconds
   });
 }
+
+export function clearCache(): void {
+  cacheStore.clear();
+}

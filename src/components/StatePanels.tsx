@@ -31,13 +31,13 @@ export function LoadingState() {
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <Card className="grid place-items-center gap-4 border-rose-200 bg-rose-50 p-8 text-center shadow-none">
-      <div className="grid size-12 place-items-center rounded-2xl bg-white text-rose-600 shadow-sm ring-1 ring-rose-200">
+    <Card className="grid place-items-center gap-4 border-[rgba(255,107,122,0.24)] bg-[rgba(255,107,122,0.08)] p-8 text-center shadow-none">
+      <div className="grid size-12 place-items-center rounded-[var(--radius-md)] bg-[rgba(255,107,122,0.12)] text-[var(--status-danger)] ring-1 ring-[rgba(255,107,122,0.24)]">
         <AlertCircle className="size-5" />
       </div>
       <div>
-        <p className="text-base font-bold text-slate-950">赛程数据暂时获取失败</p>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">{message}</p>
+        <p className="text-base font-bold text-[var(--text-primary)]">赛程数据暂时获取失败</p>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--text-secondary)]">{message}</p>
       </div>
       <Button onClick={onRetry} type="button">
         <RefreshCw className="size-4" />
@@ -49,12 +49,12 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry: () 
 
 export function EmptyState({ message }: { message: string }) {
   return (
-    <Card className="grid place-items-center gap-3 border-dashed border-stone-300 bg-white/70 p-10 text-center shadow-none">
-      <div className="grid size-12 place-items-center rounded-2xl bg-stone-100 text-slate-500 ring-1 ring-stone-200">
+    <Card className="grid place-items-center gap-3 border-dashed border-[var(--border-default)] bg-[var(--bg-surface)] p-10 text-center shadow-none">
+      <div className="grid size-12 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-hover)] text-[var(--text-tertiary)] ring-1 ring-[var(--border-default)]">
         <CalendarX2 className="size-5" />
       </div>
-      <p className="text-base font-bold text-slate-950">暂无比赛</p>
-      <p className="max-w-xl text-sm leading-6 text-slate-600">{message}</p>
+      <p className="text-base font-bold text-[var(--text-primary)]">暂无比赛</p>
+      <p className="max-w-xl text-sm leading-6 text-[var(--text-secondary)]">{message}</p>
     </Card>
   );
 }

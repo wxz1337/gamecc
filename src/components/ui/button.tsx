@@ -5,16 +5,18 @@ import { cn } from "../../lib/utils";
 const buttonVariants = cva(
   [
     "inline-flex shrink-0 items-center justify-center gap-2 rounded-full font-medium transition-all duration-200",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/10",
+    "focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]",
     "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-60"
   ],
   {
     variants: {
       variant: {
-        default: "bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 disabled:bg-zinc-300 hover:shadow-md hover:-translate-y-[1px]",
-        secondary: "bg-white text-zinc-900 shadow-sm border border-zinc-200/60 hover:bg-zinc-50 hover:shadow-md hover:-translate-y-[1px]",
-        ghost: "text-zinc-600 hover:bg-zinc-100/80 hover:text-zinc-900",
-        outline: "bg-white text-zinc-800 border border-zinc-200/60 hover:bg-zinc-50 hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] hover:-translate-y-[1px]"
+        default: "bg-[var(--brand-primary)] text-[var(--text-primary)] hover:bg-[var(--brand-primary-hover)] disabled:bg-[var(--bg-surface-hover)] hover:-translate-y-[1px]",
+        secondary:
+          "border border-[var(--border-default)] bg-[var(--bg-surface-raised)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-surface-hover)] hover:-translate-y-[1px]",
+        ghost: "text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]",
+        outline:
+          "border border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] hover:-translate-y-[1px]"
       },
       size: {
         sm: "h-8 px-4 text-xs",

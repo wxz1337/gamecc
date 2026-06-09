@@ -114,7 +114,7 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
         return (
           <div key={match.id}>
             {shouldShowDate ? (
-              <div className="sticky top-20 z-30 mb-2 inline-flex rounded-full border border-zinc-200/70 bg-[#fafafa]/95 px-3 py-1 text-[13px] font-semibold tracking-tight text-zinc-800 backdrop-blur-md">
+              <div className="sticky top-20 z-30 mb-2 inline-flex rounded-full border border-[var(--border-default)] bg-[var(--bg-surface-raised)] px-3 py-1 text-[13px] font-semibold tracking-tight text-[var(--text-secondary)]">
                 {match.displayDate}
               </div>
             ) : null}
@@ -143,16 +143,16 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
           transition={{ duration: 0.2, ease: "easeOut" }}
         >
           {Array.from({ length: 3 }).map((_, skeletonIndex) => (
-            <div className="rounded-xl border border-stone-200 bg-white/80 p-4" key={`load-more-skeleton-${skeletonIndex}`}>
+            <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4" key={`load-more-skeleton-${skeletonIndex}`}>
               <div className="grid gap-3 sm:grid-cols-[76px_minmax(0,1fr)]">
                 <div className="space-y-2">
-                  <div className="h-4 w-12 animate-pulse rounded bg-stone-200/80" />
-                  <div className="h-4 w-10 animate-pulse rounded bg-stone-200/70" />
+                  <div className="h-4 w-12 animate-pulse rounded bg-[rgba(207,218,237,0.12)]" />
+                  <div className="h-4 w-10 animate-pulse rounded bg-[rgba(207,218,237,0.1)]" />
                 </div>
                 <div className="space-y-2">
-                  <div className="h-4 w-40 animate-pulse rounded bg-stone-200/80" />
-                  <div className="h-5 w-2/3 animate-pulse rounded bg-stone-200/70" />
-                  <div className="h-4 w-56 animate-pulse rounded bg-stone-200/70" />
+                  <div className="h-4 w-40 animate-pulse rounded bg-[rgba(207,218,237,0.12)]" />
+                  <div className="h-5 w-2/3 animate-pulse rounded bg-[rgba(207,218,237,0.1)]" />
+                  <div className="h-4 w-56 animate-pulse rounded bg-[rgba(207,218,237,0.1)]" />
                 </div>
               </div>
             </div>

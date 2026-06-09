@@ -33,9 +33,9 @@ export function WeekStrip({
       <motion.button
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          "relative min-w-0 overflow-hidden rounded-xl px-2 py-2.5 text-center transition-all duration-200 ease-out sm:rounded-2xl sm:py-3",
-          "hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/10",
-          selected ? "text-zinc-900" : "text-zinc-500 hover:bg-zinc-100/50 hover:text-zinc-800"
+          "relative min-w-0 overflow-hidden rounded-[var(--radius-md)] px-2 py-2 text-center transition-all duration-200 ease-out sm:py-2.5",
+          "hover:-translate-y-[1px] focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]",
+          selected ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]"
         )}
         initial={{ opacity: 0, y: 6 }}
         key={date}
@@ -46,15 +46,15 @@ export function WeekStrip({
       >
         {selected ? (
           <motion.span
-            className="absolute inset-0 rounded-xl border border-zinc-200/50 bg-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] sm:rounded-2xl"
+            className="absolute inset-0 rounded-[var(--radius-md)] border border-[var(--brand-border)] bg-[var(--brand-soft)] shadow-[var(--brand-glow)]"
             layoutId={layoutId}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
           />
         ) : null}
-        <span className={cn("relative z-10 block text-[11px] font-bold", selected ? "text-zinc-500" : "text-zinc-400")}>
+        <span className={cn("relative z-10 block text-[11px] font-bold", selected ? "text-[var(--text-secondary)]" : "text-[var(--text-tertiary)]")}>
           {date === today ? "今天" : weekday}
         </span>
-        <strong className={cn("relative z-10 mt-1 block truncate text-base font-bold", selected ? "text-zinc-900" : "text-zinc-600")}>
+        <strong className={cn("relative z-10 mt-1 block truncate text-base font-bold", selected ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]")}>
           {date.slice(5).replace("-", ".")}
         </strong>
       </motion.button>
@@ -72,7 +72,7 @@ export function WeekStrip({
             <ChevronRight className="size-4" />
           </Button>
           <Button
-            className={cn(isCalendarOpen && "ring-2 ring-zinc-950/10")}
+            className={cn(isCalendarOpen && "shadow-[var(--focus-ring)]")}
             onClick={onOpenCalendar}
             type="button"
             variant="secondary"
@@ -95,7 +95,7 @@ export function WeekStrip({
             <ChevronRight className="size-4" />
           </Button>
           <Button
-            className={cn(isCalendarOpen && "ring-2 ring-zinc-950/10")}
+            className={cn(isCalendarOpen && "shadow-[var(--focus-ring)]")}
             onClick={onOpenCalendar}
             type="button"
             variant="secondary"

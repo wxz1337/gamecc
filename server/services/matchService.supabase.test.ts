@@ -6,6 +6,7 @@ import { mapPandaScoreMatch } from "../mappers/pandascoreMapper.js";
 import type { PandaScoreMatch } from "../types/pandascore.js";
 import { getMatches, getSourceWindowTtlSeconds } from "./matchService.js";
 import { fetchPandaScoreMatches } from "./pandascoreClient.js";
+import { clearCache } from "./cacheService.js";
 import { createSyncRun, finishSyncRunFailure, finishSyncRunSuccess } from "../repositories/syncRunRepository.js";
 import {
   getFreshWindow,
@@ -14,6 +15,17 @@ import {
   upsertSuccessWindow
 } from "../repositories/syncWindowRepository.js";
 import { queryMatchesByDateRange, upsertMatches } from "../repositories/matchRepository.js";
+
+vi.mock("../repositories/teamRepository.js", () => ({
+  upsertTeams: vi.fn(),
+  teamToRow: vi.fn((team) => ({ id: team.id ?? team.name, name: team.name })),
+  queryTeamsByIds: vi.fn().mockResolvedValue([])
+}));
+
+vi.mock("./teamIconService.js", () => ({
+  enrichTeamIcons: vi.fn((team) => team),
+  downloadTeamsConcurrently: vi.fn()
+}));
 
 vi.mock("./pandascoreClient.js", () => ({
   fetchPandaScoreMatches: vi.fn()
@@ -181,6 +193,7 @@ function buildHistoricalQuery(overrides: Partial<MatchQuery> = {}): MatchQuery {
 }
 
 beforeEach(() => {
+  clearCache();
   mockedFetchPandaScoreMatches.mockReset();
   mockedGetFreshWindow.mockReset();
   mockedGetSuccessfulWindowsForCoverage.mockReset();
@@ -654,10 +667,11 @@ describe("matchService supabase flow", () => {
   it("uses a fresh Supabase window without calling PandaScore", async () => {
     process.env.SUPABASE_URL = "https://example.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+    const today = getBeijingTodayDate();
 
     const match = buildMatch({
       id: 1,
-      begin_at: "2026-05-02T12:00:00.000Z",
+      begin_at: `${today}T12:00:00.000Z`,
       status: "finished",
       name: "Fresh Match"
     });
@@ -665,7 +679,12 @@ describe("matchService supabase flow", () => {
     mockedGetFreshWindow.mockResolvedValue(buildFreshWindow());
     mockedQueryMatchesByDateRange.mockResolvedValue([match]);
 
-    const response = await getMatches(buildQuery());
+    const response = await getMatches(
+      buildQuery({
+        from: today,
+        to: today
+      })
+    );
 
     expect(response.total).toBe(1);
     expect(response.matches[0]).toMatchObject({
@@ -679,8 +698,8 @@ describe("matchService supabase flow", () => {
       expect.objectContaining({
         source: "pandascore",
         game: "lol",
-        from_date: "2026-06-01",
-        to_date: "2026-06-07",
+        from_date: today,
+        to_date: today,
         status_group: "finished"
       })
     );
@@ -689,8 +708,8 @@ describe("matchService supabase flow", () => {
       expect.objectContaining({
         source: "pandascore",
         game: "lol",
-        fromDate: "2026-06-01",
-        toDate: "2026-06-07",
+        fromDate: today,
+        toDate: today,
         statuses: ["finished"]
       })
     );

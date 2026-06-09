@@ -4,8 +4,8 @@
 
 ## 当前版本
 
-- 版本：`0.8.0`
-- 状态：Supabase 使用优化版已完成
+- 版本：`0.9.0`
+- 状态：战队图标本地缓存版已部署
 - 运行方式：本地开发服务，支持生产构建
 - 数据源：PandaScore API
 
@@ -25,6 +25,7 @@
 - 通过后端代理请求 PandaScore，前端不暴露 token。
 - 支持内存响应缓存、Supabase 持久化窗口缓存、手动刷新和 stale 兜底。
 - Supabase 服务端访问已加入 schema 类型、显式字段查询、分片写入和查询索引优化。
+- 支持战队元数据持久化和本地图标缓存，优先通过 `/api/team-icons/...` 展示已缓存队伍 logo。
 - 后端使用请求合并避免相同源窗口并发重复拉取 PandaScore。
 - 前端首屏与日期切换会批量加载到本周最后一天，减少按天重复请求。
 - 展示比赛时间、项目、赛事、队伍、状态和 BO 赛制。
@@ -105,6 +106,14 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+## v0.9.0 说明
+
+- 新增 `teams` 表和战队图标缓存服务，解决真实战队图标外链失效导致不显示的问题。
+- `/api/matches` 会优先返回本地 `/api/team-icons/...` 图标 URL，本地没有时再回退 PandaScore 原始 URL。
+- 图标下载为后台非阻塞任务，失败不影响赛程响应，下次同步继续重试。
+- 新增 `/api/team-icons/:fileName` 路由，带文件名校验、路径边界校验、图片 Content-Type 和 24 小时缓存头。
+- 远程 Supabase 已执行 `supabase/migrations/20260609_create_teams_table.sql`，并已部署到 `https://esportscc.app`。
 
 ## v0.8.0 说明
 

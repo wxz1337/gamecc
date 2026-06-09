@@ -151,6 +151,34 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["sync_runs"]["Insert"]>;
         Relationships: [];
       };
+      teams: {
+        Row: {
+          id: string;
+          name: string;
+          acronym: string | null;
+          image_url: string | null;
+          dark_image_url: string | null;
+          cached_image_url: string | null;
+          cached_dark_image_url: string | null;
+          last_seen_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          name: string;
+          acronym?: string | null;
+          image_url?: string | null;
+          dark_image_url?: string | null;
+          cached_image_url?: string | null;
+          cached_dark_image_url?: string | null;
+          last_seen_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["teams"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

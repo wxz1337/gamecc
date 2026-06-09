@@ -3,11 +3,11 @@ import { STATUS_LABELS } from "../constants/matches";
 
 export function StatusBadge({ status }: { status: MatchStatus }) {
   const config = {
-    running: { dot: "bg-emerald-500", text: "text-emerald-700", pulse: true },
-    not_started: { dot: "bg-sky-500", text: "text-sky-700", pulse: false },
-    finished: { dot: "bg-amber-400", text: "text-slate-600", pulse: false },
-    postponed: { dot: "bg-amber-500", text: "text-amber-700", pulse: false },
-    cancelled: { dot: "bg-rose-500", text: "text-rose-700", pulse: false }
+    running: { dot: "bg-[var(--status-live)]", text: "text-[var(--status-live)]", pulse: true },
+    not_started: { dot: "bg-[var(--status-upcoming)]", text: "text-[var(--status-upcoming)]", pulse: false },
+    finished: { dot: "bg-[var(--status-finished)]", text: "text-[var(--text-secondary)]", pulse: false },
+    postponed: { dot: "bg-[var(--status-warning)]", text: "text-[var(--status-warning)]", pulse: false },
+    cancelled: { dot: "bg-[var(--status-danger)]", text: "text-[var(--status-danger)]", pulse: false }
   } as const;
   const tone = config[status];
 
