@@ -1,8 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildCacheKey, buildResponseCacheKey, buildSourceWindowCacheKey, getAny, getFresh, set } from "./cacheService.js";
+import {
+  buildCacheKey,
+  buildResponseCacheKey,
+  buildSourceWindowCacheKey,
+  clearCache,
+  getAny,
+  getFresh,
+  invalidateMatchResponseCache,
+  set
+} from "./cacheService.js";
 
 afterEach(() => {
   vi.restoreAllMocks();
+  clearCache();
 });
 
 describe("cacheService", () => {
@@ -80,5 +90,33 @@ describe("cacheService", () => {
 
     expect(getFresh<{ value: string }>("matches:2026-05-24:all")).toBeNull();
     expect(getAny<{ value: string }>("matches:2026-05-24:all")).toEqual({ value: "fresh" });
+  });
+
+  it("invalidates overlapping aggregate and game response caches", () => {
+    const buildQuery = (game: "all" | "lol" | "cs2", from = "2026-06-08", to = "2026-06-14") => ({
+      from,
+      to,
+      view: "schedule" as const,
+      game,
+      status: "running" as const,
+      tier: "S,A",
+      sort: "beginAt_asc" as const
+    });
+    const allKey = buildResponseCacheKey(buildQuery("all"));
+    const lolKey = buildResponseCacheKey(buildQuery("lol"));
+    const cs2Key = buildResponseCacheKey(buildQuery("cs2"));
+    const otherRangeKey = buildResponseCacheKey(buildQuery("all", "2026-06-20", "2026-06-21"));
+
+    set(allKey, "all");
+    set(lolKey, "lol");
+    set(cs2Key, "cs2");
+    set(otherRangeKey, "other-range");
+
+    invalidateMatchResponseCache({ game: "lol", from: "2026-06-10", to: "2026-06-10" });
+
+    expect(getAny(allKey)).toBeNull();
+    expect(getAny(lolKey)).toBeNull();
+    expect(getAny(cs2Key)).toBe("cs2");
+    expect(getAny(otherRangeKey)).toBe("other-range");
   });
 });

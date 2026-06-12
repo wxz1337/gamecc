@@ -114,7 +114,7 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
         return (
           <div key={match.id}>
             {shouldShowDate ? (
-              <div className="sticky top-16 z-30 mb-1.5 flex min-h-8 items-center gap-2.5 text-xs font-medium text-[var(--text-tertiary)]" data-date-group>
+              <div className="mb-0.5 flex min-h-8 items-center gap-3 text-xs font-medium text-[var(--text-tertiary)]" data-date-group>
                 <span className="shrink-0 text-[var(--text-secondary)]">{match.displayDate}</span>
                 <span className="h-px w-16 bg-[rgba(255,255,255,0.035)] sm:w-24" aria-hidden />
               </div>
@@ -145,16 +145,18 @@ export function MatchList({ matches, isLoadingMore = false, onNearEnd, onNearSta
         >
           {Array.from({ length: 3 }).map((_, skeletonIndex) => (
             <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 md:min-h-[84px]" key={`load-more-skeleton-${skeletonIndex}`}>
-              <div className="grid gap-3 md:grid-cols-[76px_minmax(0,1fr)_64px_minmax(0,1fr)_160px_36px] md:items-center">
+              <div className="grid gap-3 md:grid-cols-[112px_minmax(0,1fr)_minmax(150px,180px)_44px] md:items-center 2xl:grid-cols-[112px_minmax(0,1fr)_220px_44px] 2xl:gap-4">
                 <div className="space-y-1.5">
                   <div className="h-4 w-12 animate-pulse rounded bg-[rgba(207,218,237,0.12)]" />
                   <div className="h-4 w-10 animate-pulse rounded bg-[rgba(207,218,237,0.1)]" />
                 </div>
-                <div className="h-5 w-36 animate-pulse rounded bg-[rgba(207,218,237,0.12)]" />
-                <div className="hidden h-5 w-10 animate-pulse rounded bg-[rgba(207,218,237,0.1)] md:block" />
-                <div className="h-5 w-36 animate-pulse rounded bg-[rgba(207,218,237,0.12)]" />
+                <div className="grid w-full max-w-[680px] grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)] items-center gap-3 justify-self-center 2xl:gap-4">
+                  <div className="h-5 w-28 justify-self-end animate-pulse rounded bg-[rgba(207,218,237,0.12)]" />
+                  <div className="h-5 w-10 justify-self-center animate-pulse rounded bg-[rgba(207,218,237,0.1)]" />
+                  <div className="h-5 w-28 animate-pulse rounded bg-[rgba(207,218,237,0.12)]" />
+                </div>
                 <div className="hidden h-10 w-full animate-pulse rounded bg-[rgba(207,218,237,0.08)] md:block" />
-                <div className="hidden size-8 animate-pulse rounded-full bg-[rgba(207,218,237,0.1)] md:block" />
+                <div className="hidden size-11 animate-pulse rounded-full bg-[rgba(207,218,237,0.1)] md:block" />
               </div>
             </div>
           ))}

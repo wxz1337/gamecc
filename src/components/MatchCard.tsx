@@ -9,65 +9,66 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { cn } from "../lib/utils";
+import { GameIcon } from "./GameIcon";
+import { TeamLogo } from "./TeamLogo";
 
 type TeamSlotProps = {
   match: Match;
   team?: Team;
   align?: "left" | "right";
-  score: number | null;
   isWinner: boolean;
-  imgErrors: Record<string, boolean>;
-  onImageError: (src: string) => void;
 };
 
-function TeamSlot({ match, team, align = "left", score, isWinner, imgErrors, onImageError }: TeamSlotProps) {
-  const logo = team?.darkModeImageUrl || team?.imageUrl || "";
+function TeamSlot({ match, team, align = "left", isWinner }: TeamSlotProps) {
   const teamName = team?.acronym || team?.name || "TBD";
   const isPlaceholderTeam = !team || teamName === "TBD";
   const muted = match.status === "finished" && !isWinner;
-  const displayScore = match.status === "not_started" ? "-" : score ?? "-";
 
   return (
     <div
       className={cn(
-        "col-span-2 grid min-w-0 grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-2 md:col-span-1 md:grid-cols-[28px_minmax(0,1fr)]",
-        align === "right" && "md:grid-cols-[minmax(0,1fr)_28px] md:text-right"
+        "flex min-w-0 items-center gap-2.5",
+        align === "left" ? "flex-row-reverse justify-end text-right" : "justify-start text-left"
       )}
     >
-      {logo && !imgErrors[logo] ? (
-        <img
-          alt=""
-          className={cn("size-6 rounded-full bg-white/10 object-contain p-1 ring-1 ring-[var(--border-subtle)] md:size-7", align === "right" && "md:order-2")}
-          decoding="async"
-          loading="lazy"
-          onError={() => onImageError(logo)}
-          src={logo}
-        />
-      ) : (
-        <span
-          className={cn(
-            "grid size-6 place-items-center rounded-full bg-[rgba(255,255,255,0.035)] text-[8px] font-bold tracking-wider text-[var(--text-tertiary)] ring-1 ring-[var(--border-subtle)] md:size-7 md:text-[9px]",
-            align === "right" && "md:order-2"
-          )}
-        >
-          TBD
-        </span>
-      )}
-      <div className="min-w-0">
-        <span className={cn("block truncate text-[13px] font-semibold md:text-[15px]", isPlaceholderTeam ? "text-[var(--text-tertiary)]" : isWinner ? "text-[var(--text-primary)]" : muted ? "text-[var(--text-tertiary)]" : "text-[var(--text-primary)]")}>
+      <TeamLogo className="md:size-8" team={team} />
+      <div className="min-w-0 flex-1">
+        <span className={cn("block truncate text-sm font-semibold leading-5 md:text-[15px]", isPlaceholderTeam ? "text-[var(--text-tertiary)]" : isWinner ? "text-[var(--text-primary)]" : muted ? "text-[var(--text-tertiary)]" : "text-[var(--text-primary)]")}>
           {teamName}
         </span>
       </div>
-      <strong className={cn("text-right text-base font-bold tabular-nums md:hidden", isWinner ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]")}>
-        {displayScore}
-      </strong>
+    </div>
+  );
+}
+
+type MatchScoreProps = {
+  compact?: boolean;
+  isFinished: boolean;
+  isRunning: boolean;
+  isUpcoming: boolean;
+  hasScore: boolean;
+  leftScore: number | null;
+  rightScore: number | null;
+  leftWinner: boolean;
+  rightWinner: boolean;
+};
+
+function MatchScore({ compact = false, isFinished, isRunning, isUpcoming, hasScore, leftScore, rightScore, leftWinner, rightWinner }: MatchScoreProps) {
+  if (isUpcoming || (!hasScore && !isFinished)) {
+    return <span className="text-xs font-semibold tracking-wide text-[var(--text-tertiary)] md:text-sm">VS</span>;
+  }
+
+  return (
+    <div className={cn("flex items-center justify-center gap-1.5 font-bold tabular-nums", compact ? "text-base" : "text-[22px] leading-none", isRunning ? "text-[var(--status-live)]" : "text-[var(--text-secondary)]")}>
+      <span className={leftWinner ? "text-[var(--text-primary)]" : ""}>{leftScore ?? "-"}</span>
+      <span className="text-[var(--text-tertiary)]">-</span>
+      <span className={rightWinner ? "text-[var(--text-primary)]" : ""}>{rightScore ?? "-"}</span>
     </div>
   );
 }
 
 export function MatchCard({ match }: { match: Match }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
   const gameLabel = GAME_LABELS[match.game];
   const teamsLabel = formatTeams(match);
   const winnerLabel = getWinnerLabel(match);
@@ -91,10 +92,6 @@ export function MatchCard({ match }: { match: Match }) {
   const isUpcoming = match.status === "not_started";
   const details = [match.league, match.serie, match.stage, match.name].filter(Boolean).join(" · ");
 
-  const handleImageError = (src: string) => {
-    setImgErrors((current) => ({ ...current, [src]: true }));
-  };
-
   return (
     <Card
       className={cn(
@@ -104,63 +101,97 @@ export function MatchCard({ match }: { match: Match }) {
       )}
     >
       {isRunning ? <div className="absolute inset-y-0 left-0 w-px bg-[var(--status-live)]" /> : null}
-      <div
-        className="grid grid-cols-[minmax(0,1fr)_28px] gap-x-2 gap-y-1 px-2.5 py-1.5 md:min-h-[82px] md:grid-cols-[72px_minmax(86px,1fr)_60px_minmax(86px,1fr)_minmax(120px,190px)_32px] md:items-center md:gap-2 md:px-3 md:py-2 lg:grid-cols-[76px_minmax(100px,1fr)_64px_minmax(100px,1fr)_minmax(140px,210px)_34px] lg:px-4"
-        aria-label={teamsLabel}
-      >
-        <div className="col-span-2 flex min-w-0 items-center justify-between gap-3 md:col-span-1 md:block">
-          <div>
-            <p
-              className={cn(
-                "font-mono text-base font-bold tabular-nums tracking-tight md:text-lg",
-                isRunning ? "text-[var(--status-live)]" : isUpcoming ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"
-              )}
-            >
-              {match.displayTime}
-            </p>
-          </div>
-          <div className="flex items-center gap-1.5 md:mt-1 md:flex-col md:items-start md:gap-0.5">
-            <Badge className="h-5 px-2 text-[10px]" tone="dark">
-              {gameLabel}
-            </Badge>
+      <div className="px-3 py-3 md:hidden" aria-label={teamsLabel}>
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <p
+            className={cn(
+              "font-mono text-lg font-bold leading-6 tabular-nums tracking-tight",
+              isRunning ? "text-[var(--status-live)]" : isUpcoming ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"
+            )}
+          >
+            {match.displayTime}
+          </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+              <GameIcon className="size-3.5 shrink-0" game={match.game} />
+              <span className="truncate">{gameLabel}</span>
+            </span>
             <StatusBadge status={match.status} />
           </div>
         </div>
 
-        <TeamSlot
-          imgErrors={imgErrors}
-          isWinner={leftWinner}
-          match={match}
-          onImageError={handleImageError}
-          score={leftScore}
-          team={leftTeam}
-        />
-
-        <div className="hidden min-w-0 justify-center md:flex">
-          {isUpcoming || (!match.score?.length && !isFinished) ? (
-            <span className="text-sm font-semibold tracking-wide text-[var(--text-secondary)]">VS</span>
-          ) : (
-            <div className={cn("flex items-center gap-1.5 text-xl font-bold tabular-nums", isRunning ? "text-[var(--status-live)]" : "text-[var(--text-secondary)]")}>
-              <span className={leftWinner ? "text-[var(--text-primary)]" : ""}>{leftScore ?? "-"}</span>
-              <span className="text-[var(--text-tertiary)]">-</span>
-              <span className={rightWinner ? "text-[var(--text-primary)]" : ""}>{rightScore ?? "-"}</span>
-            </div>
-          )}
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_44px_minmax(0,1fr)] items-center gap-2">
+          <TeamSlot isWinner={leftWinner} match={match} team={leftTeam} />
+          <div className="flex justify-center">
+            <MatchScore
+              compact
+              hasScore={Boolean(match.score?.length)}
+              isFinished={isFinished}
+              isRunning={isRunning}
+              isUpcoming={isUpcoming}
+              leftScore={leftScore}
+              leftWinner={leftWinner}
+              rightScore={rightScore}
+              rightWinner={rightWinner}
+            />
+          </div>
+          <TeamSlot align="right" isWinner={rightWinner} match={match} team={rightTeam} />
         </div>
 
-        <TeamSlot
-          align="right"
-          imgErrors={imgErrors}
-          isWinner={rightWinner}
-          match={match}
-          onImageError={handleImageError}
-          score={rightScore}
-          team={rightTeam}
-        />
+        <div className="mt-3 flex min-w-0 items-center justify-between gap-2 border-t border-[var(--border-subtle)] pt-2.5">
+          <p className="min-w-0 truncate text-[13px] font-medium leading-5 text-[var(--text-tertiary)]">{match.tournament}</p>
+          <Button
+            aria-expanded={isExpanded}
+            aria-label={isExpanded ? "收起比赛详情" : "展开比赛详情"}
+            className="h-7 w-7 shrink-0 px-0 text-[var(--text-tertiary)] hover:bg-[rgba(255,255,255,0.045)] hover:text-[var(--text-primary)]"
+            onClick={() => setIsExpanded((current) => !current)}
+            type="button"
+            variant="ghost"
+          >
+            <Info className="size-3.5" aria-hidden />
+            <ChevronDown className={cn("size-3.5 transition-transform", isExpanded && "rotate-180")} />
+          </Button>
+        </div>
+      </div>
 
-        <div className="min-w-0 md:border-t-0 md:pl-2 md:pt-0 lg:pl-3">
-          <p className="truncate text-[13px] font-medium text-[var(--text-tertiary)] md:text-sm">{match.tournament}</p>
-          <p className="mt-0.5 hidden truncate text-xs text-[var(--text-tertiary)] md:block">
+      <div
+        className="hidden min-h-[88px] grid-cols-[112px_minmax(0,1fr)_minmax(150px,180px)_44px] items-center gap-3 px-4 py-3 md:grid 2xl:grid-cols-[112px_minmax(0,1fr)_220px_44px] 2xl:gap-4 2xl:px-5"
+        aria-label={teamsLabel}
+      >
+        <div className="min-w-0">
+          <p className={cn("font-mono text-lg font-bold leading-6 tabular-nums tracking-tight", isRunning ? "text-[var(--status-live)]" : isUpcoming ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]")}>{match.displayTime}</p>
+          <div className="mt-1.5 flex min-w-0 items-center gap-2.5">
+            <span className="inline-flex h-5 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+              <GameIcon className="size-3.5 shrink-0" game={match.game} />
+              {gameLabel}
+            </span>
+            <span className="h-3 w-px shrink-0 bg-[var(--border-strong)]" aria-hidden />
+            <StatusBadge status={match.status} />
+          </div>
+        </div>
+
+        <div className="grid w-full max-w-[680px] grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)] items-center gap-3 justify-self-center 2xl:gap-4">
+          <TeamSlot isWinner={leftWinner} match={match} team={leftTeam} />
+
+          <div className="flex min-w-0 justify-center">
+            <MatchScore
+              hasScore={Boolean(match.score?.length)}
+              isFinished={isFinished}
+              isRunning={isRunning}
+              isUpcoming={isUpcoming}
+              leftScore={leftScore}
+              leftWinner={leftWinner}
+              rightScore={rightScore}
+              rightWinner={rightWinner}
+            />
+          </div>
+
+          <TeamSlot align="right" isWinner={rightWinner} match={match} team={rightTeam} />
+        </div>
+
+        <div className="min-w-0 border-l border-[var(--border-subtle)] pl-3 2xl:pl-4">
+          <p className="truncate text-sm font-semibold leading-5 text-[var(--text-secondary)]">{match.tournament}</p>
+          <p className="mt-0.5 truncate text-xs leading-5 text-[var(--text-tertiary)]">
             {[match.stage || match.name, match.bestOf ? `BO${match.bestOf}` : null].filter(Boolean).join(" · ") || details || "赛事信息待定"}
           </p>
         </div>
@@ -168,12 +199,11 @@ export function MatchCard({ match }: { match: Match }) {
         <Button
           aria-expanded={isExpanded}
           aria-label={isExpanded ? "收起比赛详情" : "展开比赛详情"}
-          className="h-7 w-7 justify-self-end px-0 text-[var(--text-tertiary)] hover:bg-[rgba(255,255,255,0.045)] hover:text-[var(--text-primary)] focus-visible:bg-[rgba(255,255,255,0.045)] md:h-8 md:w-8"
+          className="h-11 w-11 justify-self-end px-0 text-[var(--text-tertiary)] hover:bg-[rgba(255,255,255,0.045)] hover:text-[var(--text-primary)] focus-visible:bg-[rgba(255,255,255,0.045)]"
           onClick={() => setIsExpanded((current) => !current)}
           type="button"
           variant="ghost"
         >
-          <Info className="size-4 md:hidden" aria-hidden />
           <ChevronDown className={cn("size-4 transition-transform", isExpanded && "rotate-180")} />
         </Button>
       </div>

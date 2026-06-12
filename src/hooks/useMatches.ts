@@ -30,6 +30,8 @@ type VisibleDataEntry = DisplayCacheEntry & {
   key: string;
 };
 
+type DisplayCacheKeyParts = Omit<MatchPageState, "to">;
+
 const DISPLAY_CACHE_LIMIT = 20;
 
 function buildDisplayCacheKey(filters: MatchPageState): string {
@@ -46,6 +48,41 @@ function buildDisplayCacheKey(filters: MatchPageState): string {
     stage: filters.stage,
     sort: filters.sort
   });
+}
+
+function buildDisplayCacheScopeKey(filters: DisplayCacheKeyParts): string {
+  return JSON.stringify({
+    view: filters.view,
+    from: filters.from,
+    status: filters.status,
+    tier: filters.tier,
+    query: filters.query,
+    league: filters.league,
+    team: filters.team,
+    region: filters.region,
+    stage: filters.stage,
+    sort: filters.sort
+  });
+}
+
+export function invalidateRelatedDisplayCacheEntries<T>(cache: Map<string, T>, filters: MatchPageState, keepKey: string): void {
+  const currentScopeKey = buildDisplayCacheScopeKey(filters);
+
+  for (const key of cache.keys()) {
+    if (key === keepKey) {
+      continue;
+    }
+
+    try {
+      const cachedFilters = JSON.parse(key) as DisplayCacheKeyParts;
+
+      if (buildDisplayCacheScopeKey(cachedFilters) === currentScopeKey) {
+        cache.delete(key);
+      }
+    } catch {
+      // Ignore unrelated cache keys.
+    }
+  }
 }
 
 function buildFacetOptions(values: Map<string, number>, labelMapper: (value: string) => string) {
@@ -271,6 +308,7 @@ export function useMatches({ filters }: UseMatchesParams): UseMatchesResult {
       }
 
       setSource(nextSource);
+      invalidateRelatedDisplayCacheEntries(cacheRef.current, requestFilters, displayKey);
       if (mode === "append") {
         const baseEntry = getDisplayEntry(displayKey);
         const mergedResponse = baseEntry ? mergeResponses(baseEntry.response, response) : response;

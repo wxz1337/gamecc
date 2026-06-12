@@ -21,7 +21,14 @@ import {
 } from "../../shared/match.js";
 import { mapPandaScoreMatch } from "../mappers/pandascoreMapper.js";
 import { PandaScoreMatch } from "../types/pandascore.js";
-import { buildResponseCacheKey, buildSourceWindowCacheKey, getAny, getFresh, set } from "./cacheService.js";
+import {
+  buildResponseCacheKey,
+  buildSourceWindowCacheKey,
+  getAny,
+  getFresh,
+  invalidateMatchResponseCache,
+  set
+} from "./cacheService.js";
 import { createSyncRun, finishSyncRunFailure, finishSyncRunSuccess } from "../repositories/syncRunRepository.js";
 import {
   getFreshWindow,
@@ -495,6 +502,7 @@ async function fetchAndPersistMissingFinishedRange(
         fetchedCount: rawMatches.length,
         upsertedCount: matches.length
       });
+      invalidateMatchResponseCache({ game, from: range.fromDate, to: range.toDate });
     } catch (error) {
       await Promise.allSettled([
         finishSyncRunFailure({
@@ -698,6 +706,7 @@ async function fetchDirectGameMatches(
 ): Promise<GameWindowResolution> {
   const pandaScoreStatuses = getPandaScoreStatuses(query);
   const rawMatches = await fetchPandaScoreMatches(game, range, { statuses: pandaScoreStatuses });
+  invalidateMatchResponseCache({ game, from: query.from, to: query.to });
 
   return {
     game,
@@ -808,6 +817,7 @@ async function resolveGameWithSupabase(
           fetchedCount: rawMatches.length,
           upsertedCount: matches.length
         });
+        invalidateMatchResponseCache({ game, from: fromDate, to: toDate });
 
         return {
           game,

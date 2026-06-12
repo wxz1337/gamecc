@@ -33,7 +33,7 @@ export function WeekStrip({
       <motion.button
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          "relative min-w-0 overflow-hidden rounded-[var(--radius-sm)] px-2 py-1.5 text-center transition-all duration-200 ease-out sm:py-2",
+          "relative min-h-12 min-w-0 overflow-hidden rounded-[var(--radius-sm)] px-1.5 py-1.5 text-center transition-all duration-200 ease-out sm:min-h-14 sm:px-2 sm:py-2",
           "hover:-translate-y-[1px] focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]",
           selected ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]"
         )}
@@ -51,10 +51,10 @@ export function WeekStrip({
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
           />
         ) : null}
-        <span className={cn("relative z-10 block text-[10px] font-semibold", selected ? "text-[var(--text-secondary)]" : "text-[var(--text-tertiary)]")}>
+        <span className={cn("relative z-10 block text-[10px] font-medium leading-4 sm:text-[11px]", selected ? "text-[var(--text-secondary)]" : "text-[var(--text-tertiary)]")}>
           {date === today ? "今天" : weekday}
         </span>
-        <strong className={cn("relative z-10 mt-0.5 block truncate text-sm font-bold", selected ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]")}>
+        <strong className={cn("relative z-10 block truncate text-[15px] font-bold leading-5", selected ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]")}>
           {date.slice(5).replace("-", ".")}
         </strong>
       </motion.button>
@@ -62,17 +62,17 @@ export function WeekStrip({
   });
 
   return (
-    <div className="grid gap-2" data-week-strip>
+    <div className="grid gap-2.5" data-week-strip>
       <div className="flex items-center justify-between gap-2 lg:hidden">
-        <Button aria-label="前一天" className="size-8" onClick={() => onMoveDate(-1)} size="icon" type="button" variant="outline">
+        <Button aria-label="前一天" className="size-9" onClick={() => onMoveDate(-1)} size="icon" type="button" variant="outline">
           <ChevronLeft className="size-4" />
         </Button>
         <div className="flex gap-2">
-          <Button aria-label="后一天" className="size-8" onClick={() => onMoveDate(1)} size="icon" type="button" variant="outline">
+          <Button aria-label="后一天" className="size-9" onClick={() => onMoveDate(1)} size="icon" type="button" variant="outline">
             <ChevronRight className="size-4" />
           </Button>
           <Button
-            className={cn("h-8 px-3 text-xs", isCalendarOpen && "shadow-[var(--focus-ring)]")}
+            className={cn("h-9 px-3.5 text-[13px]", isCalendarOpen && "shadow-[var(--focus-ring)]")}
             onClick={onOpenCalendar}
             type="button"
             variant="secondary"
@@ -106,7 +106,7 @@ export function WeekStrip({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7 lg:hidden">{renderDateButtons("selected-date-pill-mobile")}</div>
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-7 lg:hidden">{renderDateButtons("selected-date-pill-mobile")}</div>
     </div>
   );
 }

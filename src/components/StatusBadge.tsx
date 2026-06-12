@@ -12,8 +12,8 @@ export function StatusBadge({ status }: { status: MatchStatus }) {
   const tone = config[status];
 
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${tone.text}`}>
-      <span className={`size-2 rounded-full ${tone.dot} ${tone.pulse ? "animate-pulse" : ""}`} aria-hidden />
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold leading-4 md:text-xs ${tone.text}`}>
+      <span className={`size-1.5 rounded-full ${tone.dot} ${tone.pulse ? "animate-pulse" : ""}`} aria-hidden />
       {STATUS_LABELS[status]}
     </span>
   );

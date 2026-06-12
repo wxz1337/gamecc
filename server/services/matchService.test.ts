@@ -4,6 +4,7 @@ import { MatchQuery } from "../../shared/match.js";
 import { PandaScoreMatch } from "../types/pandascore.js";
 import { areWindowsCoveringDateRange, getMatches, getMissingDateRanges } from "./matchService.js";
 import { fetchPandaScoreMatches } from "./pandascoreClient.js";
+import { clearCache } from "./cacheService.js";
 
 vi.mock("./pandascoreClient.js", () => ({
   fetchPandaScoreMatches: vi.fn()
@@ -109,6 +110,7 @@ function buildRawMatch(overrides: RawMatchOverrides): PandaScoreMatch {
 describe("matchService", () => {
   beforeEach(() => {
     mockedFetchPandaScoreMatches.mockReset();
+    clearCache();
   });
 
   it("detects continuous historical coverage across fragmented windows", () => {
@@ -284,6 +286,52 @@ describe("matchService", () => {
 
     expect(response.total).toBe(2);
     expect(response.matches.map((match) => match.status).sort()).toEqual(["not_started", "running"]);
+  });
+
+  it("invalidates all-game responses when a single game receives a newer status", async () => {
+    let lolFetchCount = 0;
+
+    mockedFetchPandaScoreMatches.mockImplementation(async (game) => {
+      if (game === "lol") {
+        lolFetchCount += 1;
+
+        return [
+          buildRawMatch({
+            id: 101,
+            status: lolFetchCount === 1 ? "not_started" : "running",
+            name: "Updated LoL Match"
+          })
+        ];
+      }
+
+      return [
+        buildRawMatch({
+          id: game === "cs2" ? 201 : 301,
+          status: "not_started",
+          name: `${game} Match`
+        })
+      ];
+    });
+
+    const allGamesQuery = buildQuery({
+      from: "2026-07-01",
+      to: "2026-07-07",
+      view: "schedule",
+      game: "all",
+      status: "running",
+      tier: "all",
+      sort: "beginAt_asc",
+      refresh: false
+    });
+
+    const initialResponse = await getMatches(allGamesQuery);
+    expect(initialResponse.matches.find((match) => match.game === "lol")?.status).toBe("not_started");
+
+    await getMatches({ ...allGamesQuery, game: "lol", refresh: true });
+    const updatedResponse = await getMatches(allGamesQuery);
+
+    expect(lolFetchCount).toBe(3);
+    expect(updatedResponse.matches.find((match) => match.game === "lol")?.status).toBe("running");
   });
 
   it("returns available games when one source fails for all-game queries", async () => {

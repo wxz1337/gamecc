@@ -110,6 +110,26 @@ export function set<T>(key: string, value: T, ttlSeconds = getCacheTtlSeconds())
   });
 }
 
+export function invalidateMatchResponseCache(input: { game: MatchQuery["game"]; from: string; to: string }): void {
+  for (const key of cacheStore.keys()) {
+    const parts = key.split(":");
+
+    if (parts[0] !== "matches-response" || parts[1] !== "v3") {
+      continue;
+    }
+
+    const cachedFrom = parts[2];
+    const cachedTo = parts[3];
+    const cachedGame = parts[5];
+    const rangesOverlap = cachedFrom <= input.to && cachedTo >= input.from;
+    const gamesOverlap = cachedGame === "all" || input.game === "all" || cachedGame === input.game;
+
+    if (rangesOverlap && gamesOverlap) {
+      cacheStore.delete(key);
+    }
+  }
+}
+
 export function clearCache(): void {
   cacheStore.clear();
 }

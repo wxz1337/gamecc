@@ -1,18 +1,12 @@
-import { CalendarDays, Gamepad2 } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import type { GameFilter } from "../../../shared/match";
+import { GameIconTile } from "../GameIcon";
 import { GAME_FILTER_OPTIONS } from "../../constants/matches";
 import { cn } from "../../lib/utils";
 
 type SidebarNavProps = {
   selectedGame: GameFilter;
   onGameChange: (game: GameFilter) => void;
-};
-
-const gameIconLabels: Record<GameFilter, string> = {
-  all: "全部",
-  lol: "LoL",
-  cs2: "CS2",
-  valorant: "VAL"
 };
 
 export function SidebarNav({ selectedGame, onGameChange }: SidebarNavProps) {
@@ -54,14 +48,7 @@ export function SidebarNav({ selectedGame, onGameChange }: SidebarNavProps) {
                 onClick={() => onGameChange(option.value)}
                 type="button"
               >
-                <span
-                  className={cn(
-                    "grid size-7 shrink-0 place-items-center rounded-[var(--radius-xs)] text-[11px] font-bold",
-                    selected ? "bg-[var(--brand-soft)] text-[var(--brand-primary)]" : "bg-[rgba(255,255,255,0.026)] text-[var(--text-tertiary)]"
-                  )}
-                >
-                  {option.value === "all" ? <Gamepad2 className="size-3.5" /> : gameIconLabels[option.value]}
-                </span>
+                <GameIconTile className="size-7" game={option.value} iconClassName="size-5" selected={selected} />
                 <span className="min-w-0 truncate">{option.value === "all" ? "全部赛事" : option.label}</span>
               </button>
             );

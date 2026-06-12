@@ -22,6 +22,7 @@ import { useMatches } from "./hooks/useMatches";
 import { EmptyState, ErrorState, LoadingState } from "./components/StatePanels";
 import { MatchList } from "./components/MatchList";
 import { MatchCalendarPicker } from "./components/MatchCalendarPicker";
+import { GameIconTile } from "./components/GameIcon";
 import { formatUpdatedAt, getEmptyStateMessage } from "./utils/matchFormatters";
 import { Button } from "./components/ui/button";
 import { FilterTabs } from "./components/FilterTabs";
@@ -315,7 +316,16 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const gameFilterTabs = <FilterTabs label="游戏" onChange={updateGame} options={GAME_FILTER_OPTIONS} value={filters.game} />;
+  const gameFilterTabs = (
+    <FilterTabs
+      compact
+      label="游戏"
+      onChange={updateGame}
+      optionIcon={(game) => <GameIconTile game={game} selected={filters.game === game} />}
+      options={GAME_FILTER_OPTIONS}
+      value={filters.game}
+    />
+  );
 
   return (
     <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)] font-sans">
@@ -353,7 +363,7 @@ function App() {
             today={today}
           />
 
-          <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2" data-filter-toolbar>
+          <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2.5" data-filter-toolbar>
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0 flex-1">
               <FilterTabs
@@ -369,7 +379,7 @@ function App() {
 
               <div className="flex shrink-0 items-center gap-1.5">
                 <Button
-                  className="h-8 gap-1.5 px-3 text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]"
+                  className="h-9 gap-1.5 px-3 text-[13px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]"
                   onClick={() => setShowMoreFilters((current) => !current)}
                   size="sm"
                   variant="ghost"
@@ -378,11 +388,11 @@ function App() {
                   更多筛选
                   <ChevronDown className={`size-3.5 transition-transform duration-300 ${showMoreFilters ? "rotate-180" : ""}`} />
                 </Button>
-                <Button className="h-8 gap-1.5 px-3 text-[var(--text-secondary)]" onClick={handleReset} size="sm" type="button" variant="outline">
+                <Button className="h-9 gap-1.5 px-3 text-[13px] text-[var(--text-secondary)]" onClick={handleReset} size="sm" type="button" variant="outline">
                   <RotateCcw className="size-3.5" />
                   <span className="hidden sm:inline">重置</span>
                 </Button>
-                <Button className="h-8 gap-1.5 px-3 app-shell__mobile-only-inline-flex" disabled={loading} onClick={refresh} size="sm" type="button" variant="outline">
+                <Button className="h-9 gap-1.5 px-3 text-[13px] app-shell__mobile-only-inline-flex" disabled={loading} onClick={refresh} size="sm" type="button" variant="outline">
                   <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} />
                   <span className="hidden sm:inline">刷新</span>
                 </Button>
@@ -413,7 +423,7 @@ function App() {
               ) : null}
             </AnimatePresence>
 
-            <div className="mt-1.5 min-w-0 text-xs text-[var(--text-tertiary)]">
+            <div className="mt-2 min-w-0 text-[11px] leading-4 text-[var(--text-tertiary)] sm:text-xs">
               <p className="truncate">
                 {currentGameLabel} · {selectedRegionLabel} · {selectedTierLabel} · {currentStateLabel}
               </p>
@@ -421,11 +431,11 @@ function App() {
           </div>
 
           <div className="app-shell__main-inner">
-            <section className="min-w-0 space-y-2">
-              <div className="flex min-h-9 items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-1" data-list-header>
-                <h2 className="min-w-0 truncate text-base font-semibold tracking-tight text-[var(--text-primary)]">
+            <section className="min-w-0 space-y-2.5">
+              <div className="flex min-h-10 items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-1.5" data-list-header>
+                <h2 className="min-w-0 truncate text-[17px] font-semibold tracking-tight text-[var(--text-primary)]">
                   全部赛事
-                  <span className="ml-2 text-sm font-medium text-[var(--text-tertiary)]">{!error && data ? `${listMatches.length} 场` : totalLabel}</span>
+                  <span className="ml-2 text-[13px] font-medium text-[var(--text-tertiary)]">{!error && data ? `${listMatches.length} 场` : totalLabel}</span>
                 </h2>
               </div>
 
